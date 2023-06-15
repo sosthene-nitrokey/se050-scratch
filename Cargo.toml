@@ -1,0 +1,35 @@
+[package]
+name = "se050"
+version = "0.0.1"
+authors = [
+	"Jan Nordholz <j.nordholz@tu-berlin.de",
+	"Robert Stojic <Robert.Stojic@ptb.de>"
+]
+
+
+edition = "2021"
+repository = "https://github.com/robertstojicptb/se050"
+license = "Apache-2.0 OR MIT"
+description = "Driver for NXP SE050"
+
+[dependencies]
+byteorder = { version = "1", default-features = false }
+crc16 = "0.4"
+delog = "0.1"
+embedded-hal = "*"
+heapless = "0.7"
+iso7816 = "0.1.1"
+
+[features]
+default = []
+
+log-all = []
+log-debug = []
+log-info = []
+log-warn = []
+log-error = []
+log-none = []
+
+[patch.crates-io]
+iso7816 = { git = "https://github.com/sosthene-nitrokey/iso7816.git", rev = "f3725685b59fbdb49650f117496e0926fc74b11e" }
+delog = { git = "https://github.com/sosthene-nitrokey/delog.git", rev = "41901aa4d44e64f729a4d5ec5638c3911b8184a9" }
