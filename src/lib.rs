@@ -8,7 +8,7 @@ pub mod t1;
 pub mod types;
 
 pub use crate::se050::{Se050, Se050Device};
-pub use t1::T1overI2C;
+pub use t1::T1OverI2C;
 pub use types::{
     ApduClass, ApduStandardInstruction, CApduByteIterator, DelayWrapper, ObjectId, RawCApdu,
 };

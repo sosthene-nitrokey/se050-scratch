@@ -2,7 +2,7 @@ use crate::types::*;
 use byteorder::{ByteOrder, BE, LE};
 use core::convert::{Into, TryInto};
 
-pub struct T1overI2C<TWI>
+pub struct T1OverI2C<TWI>
 where
     TWI: embedded_hal::blocking::i2c::Read + embedded_hal::blocking::i2c::Write,
 {
@@ -27,13 +27,13 @@ fn maybe_debug(label: &str, data: &[u8]) {
     }
 }
 
-impl<TWI> T1overI2C<TWI>
+impl<TWI> T1OverI2C<TWI>
 where
     TWI: embedded_hal::blocking::i2c::Read + embedded_hal::blocking::i2c::Write,
 {
     pub fn new(twi: TWI, address: u16, nad: u8) -> Self {
         let nad_r: u8 = ((nad & 0xf0) >> 4) | ((nad & 0x0f) << 4);
-        T1overI2C {
+        T1OverI2C {
             twi,
             se_address: address,
             nad_hd2se: nad,
@@ -201,7 +201,7 @@ where
     }
 }
 
-impl<TWI> T1Proto for T1overI2C<TWI>
+impl<TWI> T1Proto for T1OverI2C<TWI>
 where
     TWI: embedded_hal::blocking::i2c::Read + embedded_hal::blocking::i2c::Write,
 {
