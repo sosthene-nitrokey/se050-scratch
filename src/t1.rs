@@ -22,9 +22,14 @@ const TWI_RETRY_DELAY_MS: u32 = 2;
 fn maybe_debug(label: &str, data: &[u8]) {
     if data.len() > 32 {
         let (dh, dt) = data.split_at(16);
-        debug!("{} {:?}...{:?}", label, dh, &dt[dt.len() - 16..dt.len()]);
+        debug!(
+            "{} {:02x?}...{:02x?}",
+            label,
+            dh,
+            &dt[dt.len() - 16..dt.len()]
+        );
     } else {
-        debug!("{} {:?}", label, data);
+        debug!("{} {:02x?}", label, data);
     }
 }
 

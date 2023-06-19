@@ -32,6 +32,7 @@ pub const APDU_INSTRUCTION_AUTH_OBJECT: u8 = 0x40;
 pub const APDU_INSTRUCTION_ATTEST: u8 = 0x20;
 
 //See AN12413,- 4.3.3 Instruction - Table 19. Instruction constants P. 35
+
 enum_u8! {
     pub enum Se050ApduInstruction {
         #![mask(0x1F)]
@@ -1384,7 +1385,7 @@ where
         ];
         let app_select_apdu = RawCApdu {
             cla: ApduClass::StandardPlain,
-            ins: ApduStandardInstruction::SelectFile.into(),
+            ins: instruction::SELECT_FILE,
             p1: 0x04,
             p2: 0x00,
             data: &app_id,
@@ -2726,11 +2727,11 @@ where
             Se050Error::UnknownError
         })?;
 
-        if tlv1_ret.get_data().len() != enc.len() {
+        if tlv1_ret.data().len() != enc.len() {
             error!("SE050 EncryptAESOneshot Length Mismatch");
             return Err(Se050Error::UnknownError);
         }
-        enc.copy_from_slice(tlv1_ret.get_data());
+        enc.copy_from_slice(tlv1_ret.data());
         debug!("SE050 EncryptAESOneshot OK");
         Ok(())
     }
@@ -3126,7 +3127,7 @@ where
             Se050Error::UnknownError
         })?;
 
-        buf.copy_from_slice(tlv1_ret.get_data());
+        buf.copy_from_slice(tlv1_ret.data());
 
         debug!("Se050 crate: SE050 read_secure_object buf : {:#?}\n", buf);
 
@@ -3136,8 +3137,8 @@ where
         );
 
         debug!(
-            "Se050 crate: SE050 read_secure_object tlv1_ret.get_data() : {:#?}\n",
-            tlv1_ret.get_data()
+            "Se050 crate: SE050 read_secure_object tlv1_ret.data() : {:#?}\n",
+            tlv1_ret.data()
         );
 
         debug!("Se050 crate:  SE050 read_secure_object OK \n ");
@@ -3399,7 +3400,7 @@ where
             error!("SE050 check_object_exists_p256 Return TLV Missing");
             Se050Error::UnknownError })?;
     /*
-        if tlv1_ret.get_data().len() != buf.len() {
+        if tlv1_ret.data().len() != buf.len() {
             error!("SE050 check_object_exists_p256 Length Mismatch");
             return Err(Se050Error::UnknownError);
         }
@@ -3407,17 +3408,17 @@ where
 
     //Ok(());
 
-    //Ok(buf.copy_from_slice(tlv1_ret.get_data()))
+    //Ok(buf.copy_from_slice(tlv1_ret.data()))
 
 
 
-       buf.copy_from_slice(tlv1_ret.get_data());
+       buf.copy_from_slice(tlv1_ret.data());
 
 
 
 
 
-     Ok(buf.copy_from_slice(tlv1_ret.get_data()))
+     Ok(buf.copy_from_slice(tlv1_ret.data()))
 
 
 
@@ -4732,11 +4733,11 @@ where
                 error!("SE050 EncryptAESOneshot Return TLV Missing");
                 Se050Error::UnknownError })?;
 
-            if tlv1_ret.get_data().len() != enc.len() {
+            if tlv1_ret.data().len() != enc.len() {
                 error!("SE050 EncryptAESOneshot Length Mismatch");
                 return Err(Se050Error::UnknownError);
             }
-            enc.copy_from_slice(tlv1_ret.get_data());
+            enc.copy_from_slice(tlv1_ret.data());
           //  debug!("SE050 EncryptAESOneshot {:x} OK",  cipher_mode );
            // debug!("SE050 EncryptAESOneshot   OK",  cipher_mode );
            debug!("SE050 EncryptAESOneshot {:x?} OK",  cipher_mode );
@@ -4812,14 +4813,14 @@ where
             Se050Error::UnknownError
         })?;
 
-        if tlv1_ret.get_data().len() != enc.len() {
+        if tlv1_ret.data().len() != enc.len() {
             //  error!("SE050 DecryptAESOneshot {:x} Length Mismatch",  cipher_mode );
             //error!("SE050 DecryptAESOneshot  Length Mismatch" );
             error!("SE050 DecryptAESOneshot {:x?} Length Mismatch", cipher_mode);
 
             return Err(Se050Error::UnknownError);
         }
-        enc.copy_from_slice(tlv1_ret.get_data());
+        enc.copy_from_slice(tlv1_ret.data());
         // debug!("SE050 DecryptAESOneshot {:x} OK", cipher_mode );
         //debug!("SE050 DecryptAESOneshot  OK",   );
         debug!("SE050 DecryptAESOneshot {:x?} OK", cipher_mode);
@@ -4888,11 +4889,11 @@ where
             Se050Error::UnknownError
         })?;
 
-        if tlv1_ret.get_data().len() != enc.len() {
+        if tlv1_ret.data().len() != enc.len() {
             error!("SE050 EncryptDESOneshot Length Mismatch");
             return Err(Se050Error::UnknownError);
         }
-        enc.copy_from_slice(tlv1_ret.get_data());
+        enc.copy_from_slice(tlv1_ret.data());
         // debug!("SE050 EncryptDESOneshot {:x} OK",  cipher_mode );
         //   debug!("SE050 EncryptDESOneshot   OK",   );
         debug!("SE050 EncryptDESOneshot {:x?} OK", cipher_mode);
@@ -4966,14 +4967,14 @@ where
             Se050Error::UnknownError
         })?;
 
-        if tlv1_ret.get_data().len() != enc.len() {
+        if tlv1_ret.data().len() != enc.len() {
             //error!("SE050 DecryptDESOneshot {:x} Length Mismatch",  cipher_mode );
             //error!("SE050 DecryptDESOneshot   Length Mismatch" );
             error!("SE050 DecryptDESOneshot {:x?} Length Mismatch", cipher_mode);
 
             return Err(Se050Error::UnknownError);
         }
-        enc.copy_from_slice(tlv1_ret.get_data());
+        enc.copy_from_slice(tlv1_ret.data());
         //  debug!("SE050 DecryptDESOneshot {:x} OK", cipher_mode );
         // debug!("SE050 DecryptDESOneshot   OK"    );
         debug!("SE050 DecryptDESOneshot {:x?} OK", cipher_mode);
@@ -6643,12 +6644,12 @@ where
             Se050Error::UnknownError
         })?;
 
-        if tlv1_ret.get_data().len() != buf.len() {
+        if tlv1_ret.data().len() != buf.len() {
             error!("Se050 crate: SE050 GetRandom Length Mismatch");
             return Err(Se050Error::UnknownError);
         }
 
-        buf.copy_from_slice(tlv1_ret.get_data());
+        buf.copy_from_slice(tlv1_ret.data());
 
         debug!("Se050 crate: buf {:#?}", buf);
 
@@ -6874,9 +6875,9 @@ where
             Se050Error::UnknownError
         })?;
 
-        buf.copy_from_slice(tlv1_ret.get_data());
+        buf.copy_from_slice(tlv1_ret.data());
 
-        //buf.clone_from_slice(tlv1_ret.get_data());
+        //buf.clone_from_slice(tlv1_ret.data());
 
         debug!("Se050 crate  buf : {:#?}\n", buf);
 
@@ -6886,8 +6887,8 @@ where
         );
 
         debug!(
-            "Se050 crate Check Object Exist tlv1_ret.get_data() : {:#?}\n",
-            tlv1_ret.get_data()
+            "Se050 crate Check Object Exist tlv1_ret.data() : {:#?}\n",
+            tlv1_ret.data()
         );
 
         if buf.contains(&1) {

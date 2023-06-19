@@ -26,28 +26,25 @@ enum_u8! {
     }
 }
 
-enum_u8! {
-    #[derive(Copy, Clone)]
-    pub enum ApduStandardInstruction {
-        EraseBinary = 0x0e,
-        Verify = 0x20,
-        ManageChannel = 0x70,
-        ExternalAuthenticate = 0x82,
-        GetChallenge = 0x84,
-        InternalAuthenticate = 0x88,
-        SelectFile = 0xa4,
-        ReadBinary = 0xb0,
-        ReadRecords = 0xb2,
-        GetResponse = 0xc0,
-        Envelope = 0xc2,
-        GetData = 0xca,
-        WriteBinary = 0xd0,
-        WriteRecord = 0xd2,
-        UpdateBinary = 0xd6,
-        PutData = 0xda,
-        UpdateData = 0xdc,
-        AppendRecord = 0xe2,
-    }
+pub mod instruction {
+    pub const ERASE_BINARY: u8 = 0x0e;
+    pub const VERIFY: u8 = 0x20;
+    pub const MANAGE_CHANNEL: u8 = 0x70;
+    pub const EXTERNAL_AUTHENTICATE: u8 = 0x82;
+    pub const GET_CHALLENGE: u8 = 0x84;
+    pub const INTERNAL_AUTHENTICATE: u8 = 0x88;
+    pub const SELECT_FILE: u8 = 0xa4;
+    pub const READ_BINARY: u8 = 0xb0;
+    pub const READ_RECORDS: u8 = 0xb2;
+    pub const GET_RESPONSE: u8 = 0xc0;
+    pub const ENVELOPE: u8 = 0xc2;
+    pub const GET_DATA: u8 = 0xca;
+    pub const WRITE_BINARY: u8 = 0xd0;
+    pub const WRITE_RECORD: u8 = 0xd2;
+    pub const UPDATE_BINARY: u8 = 0xd6;
+    pub const PUT_DATA: u8 = 0xda;
+    pub const UPDATE_DATA: u8 = 0xdc;
+    pub const APPEND_RECORD: u8 = 0xe2;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -55,7 +52,7 @@ enum_u8! {
 #[derive(Debug)]
 pub struct SimpleTlv<'a> {
     tag: u8,
-    header: heapless::Vec<u8, 3>,
+    header: heapless::Vec<u8, 4>,
     data: &'a [u8],
 }
 
@@ -64,8 +61,8 @@ impl<'a> SimpleTlv<'a> {
         let header = if data.len() < 128 {
             heapless::Vec::from_slice(&[tag, data.len() as u8]).unwrap()
         } else {
-            heapless::Vec::from_slice(&[tag, 0x82, (data.len() >> 8) as u8, data.len() as u8])
-                .unwrap()
+            let [l1, l2, ..] = data.len().to_be_bytes();
+            heapless::Vec::from_slice(&[tag, 0x82, l1, l2]).unwrap()
         };
         Self { tag, header, data }
     }
@@ -74,11 +71,11 @@ impl<'a> SimpleTlv<'a> {
         self.header.len() + self.data.len()
     }
 
-    pub fn get_header(&self) -> &heapless::Vec<u8, 3> {
+    pub fn header(&self) -> &[u8] {
         &self.header
     }
 
-    pub fn get_data(&self) -> &'a [u8] {
+    pub fn data(&self) -> &'a [u8] {
         self.data
     }
 }
