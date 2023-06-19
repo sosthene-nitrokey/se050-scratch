@@ -1,6 +1,7 @@
 use crate::types::*;
 use byteorder::{ByteOrder, BE, LE};
 use core::convert::{Into, TryInto};
+use embedded_hal::blocking::delay::DelayMs;
 
 pub struct T1OverI2C<TWI>
 where
@@ -43,7 +44,7 @@ where
         }
     }
 
-    fn twi_write(&mut self, data: &[u8], delay: &mut DelayWrapper) -> Result<(), T1Error> {
+    fn twi_write(&mut self, data: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<(), T1Error> {
         maybe_debug("T1 W", data);
         for _i in 0..TWI_RETRIES {
             let e = self.twi.write(self.se_address as u8, data);
@@ -51,7 +52,7 @@ where
                 trace!("t1w ok({})", _i);
                 return Ok(());
             }
-            delay.inner.delay_ms(TWI_RETRY_DELAY_MS);
+            delay.delay_ms(TWI_RETRY_DELAY_MS);
             // TODO: we should only loop on AddressNack errors
             // but the existing traits don't provide an API for that
         }
@@ -59,7 +60,7 @@ where
         Err(T1Error::TransmitError)
     }
 
-    fn twi_read(&mut self, data: &mut [u8], delay: &mut DelayWrapper) -> Result<(), T1Error> {
+    fn twi_read(&mut self, data: &mut [u8], delay: &mut dyn DelayMs<u32>) -> Result<(), T1Error> {
         for _i in 0..TWI_RETRIES {
             let e = self.twi.read(self.se_address as u8, data);
             if e.is_ok() {
@@ -67,7 +68,7 @@ where
                 trace!("t1r ok({})", _i);
                 return Ok(());
             }
-            delay.inner.delay_ms(TWI_RETRY_DELAY_MS);
+            delay.delay_ms(TWI_RETRY_DELAY_MS);
             // TODO: we should only loop on AddressNack errors
             // but the existing traits don't provide an API for that
         }
@@ -79,7 +80,7 @@ where
     fn receive_frame(
         &mut self,
         buf: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<T1Header, T1Error> {
         if 3 > buf.len() {
             return Err(T1Error::BufferOverrunError(3));
@@ -122,7 +123,7 @@ where
         &mut self,
         pcb: T1PCB,
         data: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), T1Error> {
         if data.len() > MAX_IFSC {
             return Err(T1Error::BufferOverrunError(data.len()));
@@ -143,7 +144,7 @@ where
         &mut self,
         code: T1SCode,
         data: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), T1Error> {
         self.send_frame(T1PCB::S(code, false), data, delay)
     }
@@ -152,7 +153,7 @@ where
         &mut self,
         code: T1SCode,
         data: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), T1Error> {
         let header = self.receive_frame(data, delay)?;
         match header.pcb {
@@ -166,7 +167,7 @@ where
     fn send_apdu_from_iter(
         &mut self,
         apdu_iter: &mut CApduByteIterator,
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), T1Error> {
         let mut peek: Option<u8> = None;
         let mut buf: heapless::Vec<u8, MAX_IFSC> = heapless::Vec::new();
@@ -206,12 +207,16 @@ where
     TWI: embedded_hal::blocking::i2c::Read + embedded_hal::blocking::i2c::Write,
 {
     #[inline(never)]
-    fn send_apdu(&mut self, apdu: &CApdu, delay: &mut DelayWrapper) -> Result<(), T1Error> {
+    fn send_apdu(&mut self, apdu: &CApdu, delay: &mut dyn DelayMs<u32>) -> Result<(), T1Error> {
         self.send_apdu_from_iter(&mut apdu.byte_iter(), delay)
     }
 
     #[inline(never)]
-    fn send_apdu_raw(&mut self, apdu: &RawCApdu, delay: &mut DelayWrapper) -> Result<(), T1Error> {
+    fn send_apdu_raw(
+        &mut self,
+        apdu: &RawCApdu,
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<(), T1Error> {
         self.send_apdu_from_iter(&mut apdu.byte_iter(), delay)
     }
 
@@ -219,7 +224,7 @@ where
     fn receive_apdu<'a>(
         &mut self,
         buf: &'a mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<RApdu<'a>, T1Error> {
         let rapdu = self.receive_apdu_raw(buf, delay)?;
 
@@ -270,12 +275,11 @@ where
     fn receive_apdu_raw<'a>(
         &mut self,
         buf: &'a mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<RawRApdu<'a>, T1Error> {
-        let buf_len: usize = buf.len();
         let mut buf_offset: usize = 0;
         loop {
-            let header = self.receive_frame(&mut buf[buf_offset..buf_len], delay)?;
+            let header = self.receive_frame(&mut buf[buf_offset..], delay)?;
             if let T1PCB::I(seq, multi) = header.pcb {
                 if seq != self.iseq_rcv {
                     return Err(T1Error::ProtocolError);
@@ -300,7 +304,10 @@ where
     }
 
     #[inline(never)]
-    fn interface_soft_reset(&mut self, delay: &mut DelayWrapper) -> Result<AnswerToReset, T1Error> {
+    fn interface_soft_reset(
+        &mut self,
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<AnswerToReset, T1Error> {
         let mut atrbuf: [u8; 64] = [0u8; 64];
         self.send_s(T1SCode::InterfaceSoftReset, &[], delay)?;
         self.receive_s(T1SCode::InterfaceSoftReset, &mut atrbuf, delay)?;

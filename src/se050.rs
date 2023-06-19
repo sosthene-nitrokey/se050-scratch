@@ -2,11 +2,18 @@ use crate::macros::enum_u8;
 use crate::types::*;
 use byteorder::{ByteOrder, BE};
 use core::convert::{From, TryFrom};
+use embedded_hal::blocking::delay::DelayMs;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Se050Error {
     UnknownError,
     T1Error(T1Error),
+}
+
+impl From<Se050Error> for iso7816::Status {
+    fn from(_value: Se050Error) -> Self {
+        iso7816::Status::UnspecifiedNonpersistentExecutionError
+    }
 }
 
 //SEE AN12413 P. 34 - Table 17. Instruction mask constants
@@ -579,9 +586,9 @@ enum_u8! {
 //trait-Se050Device ->  struct Se050
 pub trait Se050Device {
     //OLD VERSION
-    fn enable(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn enable(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
     //OLD VERSION
-    fn disable(&mut self, _delay: &mut DelayWrapper);
+    fn disable(&mut self, _delay: &mut dyn DelayMs<u32>);
 
     //See AN12413, //  4.4 Applet selection P.47-48
     /*
@@ -594,14 +601,14 @@ pub trait Se050Device {
     fn create_session(
         &mut self,
         authobjectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,4.5 Session management // 4.5.1 Generic session commands //4.5.1.2 ExchangeSessionData P.49
     fn exchange_session_data(
         &mut self,
         session_policies: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands /4.5.1.3 process_session_cmd P.49-50
@@ -609,38 +616,38 @@ pub trait Se050Device {
         &mut self,
         apducommand: &[u8],
         session_id: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands //4.5.1.4 RefreshSession P.50
     fn refresh_session(
         &mut self,
         policy: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands //4.5.1.4 RefreshSession P.50
-    fn close_session(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn close_session(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5 Session management //4.5.2 UserID session operations // 4.5.2.1 VerifySessionUserID P.51-52
     fn verify_session_user_id(
         &mut self,
         user_idvalue: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5.4 ECKey session operations //  4.5.4.1 ECKeySessionInternalAuthenticate P.52
     fn eckey_session_internal_authenticate(
         &mut self,
         input_data: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 ,  4.5.4 ECKey session operations //   4.5.4.2 eckey_session_get_eckapublic_key P.53-54
     fn eckey_session_get_eckapublic_key(
         &mut self,
         input_data: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.6 Module management
@@ -650,48 +657,48 @@ pub trait Se050Device {
         &mut self,
         lockindicator: &[u8],
         lockstate: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.6 Module management //   4.6.2 SetPlatformSCPRequest P.55-56
-    fn set_platform_scp_request(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn set_platform_scp_request(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     //AN12413 // 4.6 Module management  //4.6.3 set_applet_features  P.56 -57
     fn set_applet_features(
         &mut self,
         applet_config: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413,  4.7 Secure Object management
 
     // See AN12413,  4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey //P1_EC ///P.58-59
-    // fn generate_eccurve_key(&mut self, eccurve: &[u8], delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error>; //ERWEITERT
-    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut DelayWrapper) -> Result<(), Se050Error>  ;
+    // fn generate_eccurve_key(&mut self, eccurve: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error>; //ERWEITERT
+    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>  ;
     fn write_ec_key(
         &mut self,
         objectid: &[u8; 4],
         eccurve: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
     //OLD VERSION
-    // fn generate_p256_key(&mut self, delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error> ;
+    // fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> ;
     //DEFAULT CONFIGURATION OF SE050
 
     //NEW VERSION
-    // fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],  private_key_value: &[u8],  delay: &mut DelayWrapper) -> Result<(), Se050Error> ;
+    // fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],  private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> ;
     fn generate_p256_key(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<ObjectId, Se050Error>;
 
-    // fn generate_ed255_key_pair(&mut self, delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error>;
+    // fn generate_ed255_key_pair(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error>;
 
     fn generate_ed255_key_pair(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<ObjectId, Se050Error>;
 
     //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject// 4.7.1.2 WriteRSAKey //P.59-60
@@ -700,18 +707,19 @@ pub trait Se050Device {
         policy: &[u8],
         objectid: &[u8; 4],
         keysize: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey //AES key, DES key or HMAC key // P 60/ P.61
 
     //OLD VERSION
-    fn write_aes_key(&mut self, key: &[u8], delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn write_aes_key(&mut self, key: &[u8], delay: &mut dyn DelayMs<u32>)
+        -> Result<(), Se050Error>;
 
     //NEW VERSION
-    //  fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    //  fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
-    fn generate_aes_key(&mut self, delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error>;
+    fn generate_aes_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error>;
 
     fn write_des_key(
         &mut self,
@@ -719,7 +727,7 @@ pub trait Se050Device {
         objectid: &[u8; 4],
         kekid: &[u8; 4],
         key: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     fn write_hmac_key(
@@ -728,7 +736,7 @@ pub trait Se050Device {
         objectid: &[u8; 4],
         kekid: &[u8; 4],
         key: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.4 WriteBinary  //P.61
@@ -739,7 +747,7 @@ pub trait Se050Device {
         file_offset: &[u8; 2],
         file_length: &[u8; 2],
         data1: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject P.57 //4.7.1.5 write_user_id  //P.62
@@ -748,7 +756,7 @@ pub trait Se050Device {
         policy: &[u8],
         objectid: &[u8; 4],
         user_identifier_value: &[u8; 16],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.6 WriteCounter  //P.62
@@ -758,7 +766,7 @@ pub trait Se050Device {
         counterid: &[u8; 4],
         countersize: &[u8; 2],
         counterfile: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject // 4.7.1.7 WritePCR  P.63
@@ -768,7 +776,7 @@ pub trait Se050Device {
         pcrid: &[u8; 4],
         initial_hash_value: &[u8],
         ext: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management // 4.7.1.8  ImportObject P.63-64
@@ -778,7 +786,7 @@ pub trait Se050Device {
         identifier: &[u8; 4],
         rsakeycomponent: &[u8],
         serializedobjectencrypted: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject // 4.7.1.7 WritePCR  P.64
@@ -787,17 +795,17 @@ pub trait Se050Device {
         authdata: &[u8],
         hostpublickeyidentifier: &[u8],
         writesecureobjectcommand: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
-    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     fn read_secure_object(
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.2 ExportObject // P.67
@@ -805,47 +813,47 @@ pub trait Se050Device {
         &mut self,
         objectidentifier: &[u8; 4],
         rsakeycomponent: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.1 ReadType P.67-68
     fn read_type(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject 4.7.4.2 ReadSize P.68
     fn read_size(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.3 ReadIDList P.69
     fn read_id_list(
         &mut self,
         offset: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
-    //  fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    //  fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     fn check_object_exists(
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
-    //fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut DelayWrapper) -> Result< (), Se050Error>;
+    //fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
     fn delete_secure_object(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management
@@ -854,7 +862,7 @@ pub trait Se050Device {
     fn create_eccurve(
         &mut self,
         eccurve: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management //  4.8.2 SetECCurveParam -Set a curve parameter. The curve must have been created first by CreateEcCurve. P.72
@@ -863,24 +871,24 @@ pub trait Se050Device {
         eccurve: &[u8],
         eccurveptaram: &[u8],
         curveparametervalue: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management //  4.8.3 GetECCurveID Get the curve associated with an EC key.. P.72-73
     fn get_eccurve_id(
         &mut self,
         identifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management //  4.8.3 GetECCurveID Get the curve associated with an EC key.. P.73
-    fn read_eccurve_list(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn read_eccurve_list(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management // 4.8.5 DeleteECCurve - Deletes an EC curve P.74
     fn delete_eccurve(
         &mut self,
         eccurve: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.9 Crypto Object management
@@ -891,17 +899,17 @@ pub trait Se050Device {
         cryptoobjectidentifier: &[u8; 2],
         cryptocontext: &[u8],
         cryptoobjectsubtype: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.9 Crypto Object management // 4.9.2 ReadCryptoObjectList. P.75
-    fn read_crypto_object_list(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn read_crypto_object_list(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     // See AN12413// 4.9 Crypto Object management // 4.9.3 DeleteCryptoObject P.75 - 76
     fn delete_crypto_object(
         &mut self,
         cryptoobjectidentifier: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC // 4.10.1 Signature generation // 4.10.1.1 ECDSASign P.76-77
@@ -910,7 +918,7 @@ pub trait Se050Device {
         eckeyidentifier: &[u8; 4],
         ecsignaturealgo: &[u8],
         inputdata: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC
@@ -921,7 +929,7 @@ pub trait Se050Device {
         eckeyidentifier: &[u8; 4],
         edsignaturealgo: &[u8],
         inputdata: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC // 4.10.1 Signature generation // 4.10.1.3 ECDAASign P.78
@@ -931,7 +939,7 @@ pub trait Se050Device {
         ecdaasignaturealgo: &[u8],
         hashedinputdata: &[u8; 32],
         randomdata: &[u8; 32],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC // 4.10.2 Signature verification // 4.10.2.1 ECDSAVerify P.79
@@ -941,7 +949,7 @@ pub trait Se050Device {
         ecsignaturealgo: &[u8],
         hashedcomparedata: &[u8],
         asn1signaturedata: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC // 4.10.2 Signature verification // 4.10.2.2 EdDSAVerify P.80
@@ -951,7 +959,7 @@ pub trait Se050Device {
         edsignaturealgo: &[u8],
         plaincomparedata: &[u8],
         signaturedata: &[u8; 64],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC //  4.10.3 Shared secret generation //  4.10.3.1 ECDHGenerateSharedSecret P.81
@@ -959,7 +967,7 @@ pub trait Se050Device {
         &mut self,
         eckeyidentifier: &[u8; 4],
         eckey: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.11 Crypto operations RSA
@@ -970,7 +978,7 @@ pub trait Se050Device {
         rsakeyidentifier: &[u8; 4],
         rsasignaturealgo: &[u8],
         inputdata: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.11 Crypto operations RSA // 4.11.2 Signature Verification  //4.11.2.1 RSAVerify P.82-83
@@ -980,7 +988,7 @@ pub trait Se050Device {
         rsasignaturealgo: &[u8],
         datatobeverified: &[u8],
         asn1signature: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.11 Crypto operations RSA // 4.11.3 Encryption // 4.11.3.1 RSAEncrypt P.83-84
@@ -989,7 +997,7 @@ pub trait Se050Device {
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
         datatobeencrypted: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.11 Crypto operations RSA // 4.11.3 Encryption // 4.11.3.2 RSADecrypt P.84
@@ -998,7 +1006,7 @@ pub trait Se050Device {
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
         datatobedecrypted: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.12 Crypto operations AES/DES
@@ -1009,14 +1017,14 @@ pub trait Se050Device {
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
         initializationvector: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
     fn cipher_init_decrypt(
         &mut self,
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
         initializationvector: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.12 Crypto operations AES/DES //4.12.2 CipherUpdate P.85-86
@@ -1024,7 +1032,7 @@ pub trait Se050Device {
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.12 Crypto operations AES/DES //4.12.3 CipherFinal P.86-87
@@ -1032,7 +1040,7 @@ pub trait Se050Device {
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.12 Crypto operations AES/DES //4.12.4 CipherOneShot P.87
@@ -1042,7 +1050,7 @@ pub trait Se050Device {
         ciphermode: &[u8],
         inputdata: &[u8],
         initializationvector: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
     fn cipher_one_shot_decrypt(
         &mut self,
@@ -1050,7 +1058,7 @@ pub trait Se050Device {
         ciphermode: &[u8],
         inputdata: &[u8],
         initializationvector: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //4.12 Crypto operations AES/DES  //4.12.4 CipherOneShot - Encrypt or decrypt data in one shot mode //P.87
@@ -1060,7 +1068,7 @@ pub trait Se050Device {
             &mut self,
             data: &[u8],
             enc: &mut [u8],
-            delay: &mut DelayWrapper,
+            delay: &mut dyn DelayMs<u32>,
         ) -> Result<(), Se050Error>;
     */
     //OLD VERSION
@@ -1068,18 +1076,18 @@ pub trait Se050Device {
         &mut self,
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //NEW VERSION
-    //fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut DelayWrapper, ) -> Result<(), Se050Error> ;
+    //fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayMs<u32>, ) -> Result<(), Se050Error> ;
     fn decrypt_aes_oneshot(
         &mut self,
         objectid: &[u8; 4],
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     fn encrypt_des_oneshot(
@@ -1088,7 +1096,7 @@ pub trait Se050Device {
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
     fn decrypt_des_oneshot(
         &mut self,
@@ -1096,7 +1104,7 @@ pub trait Se050Device {
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.13 Message Authentication Codes
@@ -1106,7 +1114,7 @@ pub trait Se050Device {
         &mut self,
         mackeybjectidentifier: &[u8; 4],
         cryptobjectidentifier: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.13 Message Authentication Codes //4.13.1 MACInit P.87-88
@@ -1114,7 +1122,7 @@ pub trait Se050Device {
         &mut self,
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.13 Message Authentication Codes //4.13.3 MACFinal P.89
@@ -1123,7 +1131,7 @@ pub trait Se050Device {
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
         mactovalidate: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.13 Message Authentication Codes //4.13.4 MACOneShot P.90
@@ -1133,7 +1141,7 @@ pub trait Se050Device {
         macalgo: &[u8],
         datainputtomac: &[u8],
         mactoverify: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.14 Key Derivation Functions
@@ -1146,7 +1154,7 @@ pub trait Se050Device {
         salt: &[u8; 64],
         info: &[u8; 64],
         requestedlength: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.14 Key Derivation Functions //4.14.2 PBKDF2 P.91-92
@@ -1156,7 +1164,7 @@ pub trait Se050Device {
         salt: &[u8; 64],
         iterationcount: &[u8; 2],
         requestedlength: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support
@@ -1167,7 +1175,7 @@ pub trait Se050Device {
         masterkeyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 4],
         divinput: &[u8; 31],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.2 DFAuthenticateFirst  //4.15.2.1 DFAuthenticateFirstPart1 // P.95-96
@@ -1175,14 +1183,14 @@ pub trait Se050Device {
         &mut self,
         keyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 16],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.2 DFAuthenticateFirst  //4.15.2.2 DFAuthenticateFirstPart2 // P.95-96
     fn dfauthenticatefirstpart2(
         &mut self,
         input: &[u8; 32],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.3.1 DFAuthenticateNonFirstPart1// P.96-97
@@ -1190,18 +1198,18 @@ pub trait Se050Device {
         &mut self,
         keyidentifier: &[u8; 4],
         encryptedcardchallenge: &[u8; 16],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.3.2 DFAuthenticateNonFirstPart2// P.97
     fn dfauthenticatenonfirstpart2(
         &mut self,
         edata: &[u8; 16],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.4 DFDumpSessionKeys// P.97-98
-    fn dfdumpdsessionkeys(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.5 DFChangeKey// 4.15.5.1 DFChangeKeyPart1 P.98-99
     fn dfchangekeypart1(
@@ -1211,19 +1219,23 @@ pub trait Se050Device {
         setnumber: &[u8],
         desfirekeynumber: &[u8],
         keyversion: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.5 DFChangeKey// 4.15.5.2 DFChangeKeyPart2 P.99
-    fn dfchangekeypart2(&mut self, mac: &[u8], delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn dfchangekeypart2(
+        &mut self,
+        mac: &[u8],
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.6 DFKillAuthentication  P.99-100
-    fn dfkillauthentication(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn dfkillauthentication(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     //See AN12413, //4.16 TLS handshake support
 
     //See AN12413, //4.16 TLS handshake support //  4.16.1 TLSGenerateRandom P.100
-    fn tls_generate_random(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn tls_generate_random(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     //See AN12413, //4.16 TLS handshake support //  4.16.2 TLSCalculatePreMasterSecret P.101
     fn tls_calculate_pre_master_secret(
@@ -1232,7 +1244,7 @@ pub trait Se050Device {
         keypairidentifier: &[u8; 4],
         hmackeyidentifier: &[u8; 4],
         inputdata: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413, //4.16 TLS handshake support //  4.16.3 TLSPerformPRF P.101-102
@@ -1243,7 +1255,7 @@ pub trait Se050Device {
         label: &[u8; 64],
         random: &[u8; 32],
         requestlenght: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413, //4.17 I2C controller support
@@ -1255,7 +1267,7 @@ pub trait Se050Device {
         attestationobjectidentifier: &[u8],
         attestationalgo: &[u8],
         freshnessrandom: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413, //4.18 Digest operations
@@ -1264,7 +1276,7 @@ pub trait Se050Device {
     fn digest_init(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //AN12413, //4.18 Digest operations //4.18.2 DigestUpdate // P.106-107
@@ -1272,7 +1284,7 @@ pub trait Se050Device {
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //AN12413, //4.18 Digest operations //4.18.3 DigestFinal // P. 107-108
@@ -1280,7 +1292,7 @@ pub trait Se050Device {
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //AN12413, //4.18 Digest operations //4.18.3 DigestFinal // P. 107-108
@@ -1288,30 +1300,34 @@ pub trait Se050Device {
         &mut self,
         digestmode: &[u8],
         datatobehashed: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413, // 4.19 Generic management commands
 
     //AN12413, // 4.19 Generic management commands //4.19.1 GetVersion  P.108 -109
-    fn get_version(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn get_version(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     //AN12413, // 4.19 Generic management commands //4.19.2 get_timestamp P.109
-    fn get_timestamp(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn get_timestamp(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 
     //AN12413, // 4.19 Generic management commands //4.19.2 GetTimestamp P.109
     fn get_free_memory(
         &mut self,
         memoryconstant: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413, //4.19 Generic management commands // P110-11
     //OLD VERSION
-    fn get_random(&mut self, buf: &mut [u8], delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn get_random(
+        &mut self,
+        buf: &mut [u8],
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<(), Se050Error>;
 
     //AN12413, // 4.19 Generic management commands //44.19.5 delete_all P.112
-    fn delete_all(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error>;
+    fn delete_all(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
 }
 
 //struct Se050AppInfo ->no further Implementation 20221026
@@ -1324,10 +1340,7 @@ pub struct Se050AppInfo {
 }
 //STRUCT SE050
 #[derive(Debug)]
-pub struct Se050<T>
-where
-    T: T1Proto,
-{
+pub struct Se050<T> {
     t1_proto: T,
     atr_info: Option<AnswerToReset>,
     app_info: Option<Se050AppInfo>,
@@ -1354,7 +1367,7 @@ where
     //###########################################################################
     //###########################################################################
     //OLD VERSION
-    fn enable(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn enable(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         /* Step 1: perform interface soft reset, parse ATR */
         let r = self.t1_proto.interface_soft_reset(delay);
         if r.is_err() {
@@ -1412,7 +1425,7 @@ where
     //###########################################################################
     //TO-DO
 
-    fn disable(&mut self, _delay: &mut DelayWrapper) {
+    fn disable(&mut self, _delay: &mut dyn DelayMs<u32>) {
         // send S:EndApduSession
         // receive ACK
         // power down
@@ -1451,7 +1464,7 @@ where
     fn create_session(
         &mut self,
         authobjectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), authobjectidentifier);
 
@@ -1492,7 +1505,7 @@ where
     fn exchange_session_data(
         &mut self,
         session_policies: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), session_policies);
 
@@ -1534,7 +1547,7 @@ where
         &mut self,
         apducommand: &[u8],
         session_id: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvtgsid = SimpleTlv::new(Se050TlvTag::SessionID.into(), session_id);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), apducommand);
@@ -1576,7 +1589,7 @@ where
     fn refresh_session(
         &mut self,
         policy: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvtgsid = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
 
@@ -1617,7 +1630,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn close_session(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn close_session(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -1653,7 +1666,7 @@ where
     fn verify_session_user_id(
         &mut self,
         user_idvalue: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), user_idvalue);
 
@@ -1737,7 +1750,7 @@ where
     fn eckey_session_internal_authenticate(
         &mut self,
         input_data: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), input_data);
 
@@ -1787,7 +1800,7 @@ where
     fn eckey_session_get_eckapublic_key(
         &mut self,
         input_data: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), input_data);
 
@@ -1851,7 +1864,7 @@ where
         &mut self,
         lockindicator: &[u8],
         lockstate: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), lockindicator);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag1.into(), lockstate);
@@ -1905,7 +1918,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn set_platform_scp_request(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn set_platform_scp_request(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -1943,7 +1956,7 @@ where
     fn set_applet_features(
         &mut self,
         applet_config: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), applet_config);
 
@@ -2000,7 +2013,7 @@ where
 
     //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey    P.58
     //P1_EC 4.3.19 ECCurve P.42
-    fn generate_eccurve_key(&mut self,  eccurve: &[u8],delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error> {
+    fn generate_eccurve_key(&mut self,  eccurve: &[u8],delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &eccurve );	// Se050ECCurveconstants
         let mut capdu = CApdu::new(
@@ -2038,7 +2051,7 @@ where
     //P1_EC 4.3.19 ECCurve P.42
     /*
      #[inline(never)]
-     fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut DelayWrapper) -> Result<(), Se050Error>
+     fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
 
      {
          let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
@@ -2097,7 +2110,7 @@ where
     //20E8A001
     //&[0x20, 0xE8, 0xA0, 0x01]
     /*
-        fn generate_p256_key(&mut self, delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error> {
+        fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
             //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
            //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
          let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(),   &[ 0x01, 0xA0, 0xE8,  0x20 ] );
@@ -2155,8 +2168,8 @@ where
     /*
 
         #[inline(never)]
-        //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut DelayWrapper) -> Result<(), Se050Error>
-        fn generate_ed255_key_pair(&mut self, delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error> {
+        //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
+        fn generate_ed255_key_pair(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
         {
           //  let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
 
@@ -2230,7 +2243,7 @@ where
     //P1_EC //  4.3.19 ECCurve NIST_P256 P.42
     /*    #[inline(never)]
 
-       fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],   private_key_value: &[u8],  delay: &mut DelayWrapper) -> Result<(), Se050Error>
+       fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],   private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
        {
 
            let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
@@ -2319,7 +2332,7 @@ where
         policy: &[u8],
         objectid: &[u8; 4],
         keysize: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
 
@@ -2368,7 +2381,7 @@ where
         //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey P.60
         //P1_AES //template for
         #[inline(never)]
-        fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+        fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
             if key.len() != 16 {
                 todo!();
             }
@@ -2412,7 +2425,11 @@ where
     #[inline(never)]
     /* NOTE: hardcoded Object ID 0xae50ae50! */
     /* no support yet for rfc3394 key wrappings, policies or max attempts */
-    fn write_aes_key(&mut self, key: &[u8], delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn write_aes_key(
+        &mut self,
+        key: &[u8],
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<(), Se050Error> {
         if key.len() != 16 {
             todo!();
         }
@@ -2453,10 +2470,10 @@ where
     //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey P.60
     //P1_AES //template for
     #[inline(never)]
-    //fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    //fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
 
-    //fn generate_aes_key(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
-    fn generate_aes_key(&mut self, delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error> {
+    //fn generate_aes_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn generate_aes_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
         /*   if key.len() != 16 {
                     todo!();
                 }
@@ -2514,7 +2531,7 @@ where
         objectid: &[u8; 4],
         kekid: &[u8; 4],
         key: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         if key.len() != 16 {
             todo!();
@@ -2569,7 +2586,7 @@ where
         objectid: &[u8; 4],
         kekid: &[u8; 4],
         key: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         if key.len() != 16 {
             todo!();
@@ -2618,7 +2635,7 @@ where
         file_offset: &[u8; 2],
         file_length: &[u8; 2],
         data1: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
@@ -2666,7 +2683,7 @@ where
         &mut self,
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         if data.len() > 240 || (data.len() % 16 != 0) {
             error!("Input data too long or unaligned");
@@ -2730,7 +2747,7 @@ where
         policy: &[u8],
         objectid: &[u8; 4],
         user_identifier_value: &[u8; 16],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
 
@@ -2786,7 +2803,7 @@ where
         counterid: &[u8; 4],
         countersize: &[u8; 2],
         counterfile: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), counterid);
@@ -2845,7 +2862,7 @@ where
         pcrid: &[u8; 4],
         initial_hash_value: &[u8],
         ext: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), pcrid);
@@ -2904,7 +2921,7 @@ where
         identifier: &[u8; 4],
         rsakeycomponent: &[u8],
         serializedobjectencrypted: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), identifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsakeycomponent);
@@ -2966,7 +2983,7 @@ where
         authdata: &[u8],
         hostpublickeyidentifier: &[u8],
         writesecureobjectcommand: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlva = SimpleTlv::new(Se050TlvTag::ImportAuthData.into(), authdata);
         let tlvb = SimpleTlv::new(Se050TlvTag::ImportAuthKeyID.into(), hostpublickeyidentifier);
@@ -3014,7 +3031,7 @@ where
     /*
         // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
         #[inline(never)]
-        fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut DelayWrapper) -> Result<(), Se050Error>
+        fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
         {
 
             let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
@@ -3064,12 +3081,12 @@ where
     //###########################################################################
     // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
     #[inline(never)]
-    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut DelayWrapper) -> Result<(), Se050Error>
+    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
     fn read_secure_object(
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         debug!("Se050 crate: SE050 read_secure_object DEBUG \n");
 
@@ -3135,7 +3152,7 @@ where
         &mut self,
         objectidentifier: &[u8; 4],
         rsakeycomponent: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsakeycomponent);
@@ -3188,7 +3205,7 @@ where
     fn read_type(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -3226,7 +3243,7 @@ where
     fn read_size(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -3264,7 +3281,7 @@ where
     fn read_id_list(
         &mut self,
         offset: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), offset);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xFF]);
@@ -3302,7 +3319,7 @@ where
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
     /*
        #[inline(never)]
-       fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut DelayWrapper) -> Result<(), Se050Error>
+       fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
        {
 
        let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
@@ -3340,7 +3357,7 @@ where
        //###########################################################################
         // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
         #[inline(never)]
-        fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut DelayWrapper) -> Result< (), Se050Error>
+        fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>
         {
 
             //let mut buflen: [u8; 2] = [0, 0];
@@ -3414,7 +3431,7 @@ where
         //###########################################################################
         // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
         #[inline(never)]
-        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut DelayWrapper) -> Result< (), Se050Error>
+        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>
         {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -3466,7 +3483,7 @@ where
     fn create_eccurve(
         &mut self,
         eccurve: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eccurve);
 
@@ -3510,7 +3527,7 @@ where
         eccurve: &[u8],
         eccurveparam: &[u8],
         curveparametervalue: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eccurve);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eccurveparam);
@@ -3554,7 +3571,7 @@ where
     fn get_eccurve_id(
         &mut self,
         identifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), identifier);
 
@@ -3593,7 +3610,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn read_eccurve_list(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn read_eccurve_list(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
@@ -3629,7 +3646,7 @@ where
     fn delete_eccurve(
         &mut self,
         eccurve: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eccurve);
 
@@ -3685,7 +3702,7 @@ where
         cryptoobjectidentifier: &[u8; 2],
         cryptocontext: &[u8],
         cryptoobjectsubtype: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), cryptoobjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptocontext);
@@ -3727,7 +3744,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn read_crypto_object_list(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn read_crypto_object_list(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
@@ -3765,7 +3782,7 @@ where
     fn delete_crypto_object(
         &mut self,
         cryptoobjectidentifier: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), cryptoobjectidentifier);
 
@@ -3829,7 +3846,7 @@ where
         eckeyidentifier: &[u8; 4],
         ecsignaturealgo: &[u8],
         inputdata: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ecsignaturealgo);
@@ -3880,7 +3897,7 @@ where
         eckeyidentifier: &[u8; 4],
         edsignaturealgo: &[u8],
         inputdata: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), edsignaturealgo);
@@ -3934,7 +3951,7 @@ where
         ecdaasignaturealgo: &[u8],
         hashedinputdata: &[u8; 32],
         randomdata: &[u8; 32],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ecdaasignaturealgo);
@@ -3989,7 +4006,7 @@ where
         ecsignaturealgo: &[u8],
         hashedcomparedata: &[u8],
         asn1signaturedata: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ecsignaturealgo);
@@ -4049,7 +4066,7 @@ where
         edsignaturealgo: &[u8],
         plaincomparedata: &[u8],
         signaturedata: &[u8; 64],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), edsignaturealgo);
@@ -4106,7 +4123,7 @@ where
         &mut self,
         eckeyidentifier: &[u8; 4],
         eckey: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), eckey);
@@ -4170,7 +4187,7 @@ where
         rsakeyidentifier: &[u8; 4],
         rsasignaturealgo: &[u8],
         inputdata: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), rsakeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsasignaturealgo);
@@ -4222,7 +4239,7 @@ where
         rsasignaturealgo: &[u8],
         datatobeverified: &[u8],
         asn1signature: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), rsakeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsasignaturealgo);
@@ -4272,7 +4289,7 @@ where
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
         datatobeencrypted: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), rsakeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsaencryptionalgo);
@@ -4320,7 +4337,7 @@ where
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
         datatobedecrypted: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), rsakeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsaencryptionalgo);
@@ -4398,7 +4415,7 @@ where
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
         initializationvector: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyobjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
@@ -4440,7 +4457,7 @@ where
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
         initializationvector: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyobjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
@@ -4486,7 +4503,7 @@ where
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), inputdata);
@@ -4530,7 +4547,7 @@ where
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), inputdata);
@@ -4583,7 +4600,7 @@ where
         ciphermode: &[u8],
         inputdata: &[u8],
         initializationvector: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keybjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ciphermode); // 4.3.21 CipherMode Table 39. CipherMode constants
@@ -4628,7 +4645,7 @@ where
         ciphermode: &[u8],
         inputdata: &[u8],
         initializationvector: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keybjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ciphermode); // 4.3.21 CipherMode Table 39. CipherMode constants
@@ -4671,7 +4688,7 @@ where
         /* NOTE: hardcoded Object ID 0xae50ae50! */
         //4.12 Crypto operations AES/DES // 4.12.4 CipherOneShot // ENCRYPT P.87
         //  4.3.21 CipherMode // 4.3.21 CipherMode Table 39. CipherMode constants P.43
-        fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut DelayWrapper, ) -> Result<(), Se050Error>
+        fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayMs<u32>, ) -> Result<(), Se050Error>
         {
             if data.len() > 240 || (data.len() % 16 != 0) {
                 error!("Input data too long or unaligned");
@@ -4741,7 +4758,7 @@ where
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         if data.len() > 240 || (data.len() % 16 != 0) {
             error!("Input data too long or unaligned");
@@ -4821,7 +4838,7 @@ where
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         if data.len() > 240 || (data.len() % 16 != 0) {
             error!("Input data too long or unaligned");
@@ -4894,7 +4911,7 @@ where
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         if data.len() > 240 || (data.len() % 16 != 0) {
             error!("Input data too long or unaligned");
@@ -4994,7 +5011,7 @@ where
         &mut self,
         mackeybjectidentifier: &[u8; 4],
         cryptobjectidentifier: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), mackeybjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptobjectidentifier);
@@ -5040,7 +5057,7 @@ where
         &mut self,
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), macdatainput);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptobjectidentifier);
@@ -5089,7 +5106,7 @@ where
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
         mactovalidate: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), macdatainput);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptobjectidentifier);
@@ -5145,7 +5162,7 @@ where
         macalgo: &[u8],
         datainputtomac: &[u8],
         mactoverify: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyobjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), macalgo);
@@ -5220,7 +5237,7 @@ where
         salt: &[u8; 64],
         info: &[u8; 64],
         requestedlength: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), hmackeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), digestmode);
@@ -5283,7 +5300,7 @@ where
         salt: &[u8; 64],
         iterationcount: &[u8; 2],
         requestedlength: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), passwordidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), salt);
@@ -5370,7 +5387,7 @@ where
         masterkeyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 4],
         divinput: &[u8; 31],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), masterkeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), diversifiedkeyidentifier);
@@ -5422,7 +5439,7 @@ where
         &mut self,
         keyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 16],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), diversifiedkeyidentifier);
@@ -5470,7 +5487,7 @@ where
     fn dfauthenticatefirstpart2(
         &mut self,
         input: &[u8; 32],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), input);
 
@@ -5517,7 +5534,7 @@ where
         &mut self,
         keyidentifier: &[u8; 4],
         encryptedcardchallenge: &[u8; 16],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), encryptedcardchallenge);
@@ -5567,7 +5584,7 @@ where
     fn dfauthenticatenonfirstpart2(
         &mut self,
         edata: &[u8; 16],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), edata);
 
@@ -5608,7 +5625,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn dfdumpdsessionkeys(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5668,7 +5685,7 @@ where
         setnumber: &[u8],
         desfirekeynumber: &[u8],
         keyversion: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), oldkey);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), newkey);
@@ -5720,7 +5737,11 @@ where
     */
 
     #[inline(never)]
-    fn dfchangekeypart2(&mut self, mac: &[u8], delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn dfchangekeypart2(
+        &mut self,
+        mac: &[u8],
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), mac);
 
         let mut capdu = CApdu::new(
@@ -5762,7 +5783,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn dfkillauthentication(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn dfkillauthentication(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5804,7 +5825,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn tls_generate_random(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn tls_generate_random(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5860,7 +5881,7 @@ where
         keypairidentifier: &[u8; 4],
         hmackeyidentifier: &[u8; 4],
         inputdata: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), pskidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), keypairidentifier);
@@ -5941,7 +5962,7 @@ where
         label: &[u8; 64],
         random: &[u8; 32],
         requestlenght: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), hmackeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), digestmode);
@@ -6022,7 +6043,7 @@ where
         attestationobjectidentifier: &[u8],
         attestationalgo: &[u8],
         freshnessrandom: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), i2ccommand);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), attestationobjectidentifier);
@@ -6093,7 +6114,7 @@ where
     fn digest_init(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
 
@@ -6140,7 +6161,7 @@ where
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), datatobehashed);
@@ -6189,7 +6210,7 @@ where
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), datatobehashed);
@@ -6238,7 +6259,7 @@ where
         &mut self,
         digestmode: &[u8],
         datatobehashed: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), digestmode);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), datatobehashed);
@@ -6295,7 +6316,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn get_version(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn get_version(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6330,7 +6351,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn get_timestamp(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn get_timestamp(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6374,7 +6395,7 @@ where
     fn get_free_memory(
         &mut self,
         memoryconstant: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), memoryconstant);
 
@@ -6425,7 +6446,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn delete_all(&mut self, delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn delete_all(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             // Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6463,7 +6484,7 @@ where
     //###########################################################################
         // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
         #[inline(never)]
-        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut DelayWrapper) -> Result< (), Se050Error>
+        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>
         {
 
         debug!("Se050 crate: SE050 delete_secure_object DEBUG  ");
@@ -6519,7 +6540,7 @@ where
     /* ASSUMPTION: SE050 is provisioned with an instantiated P-256 curve object;
         see NXP AN12413 -> Secure Objects -> Default Configuration */
     /* NOTE: hardcoded Object ID 0xae51ae51! */
-    fn generate_p256_key(&mut self, delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error> {
+    fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
 
         debug!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
         //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x59, 0xae, 0x59]);
@@ -6582,7 +6603,11 @@ where
     //OLD VERSION
 
     #[inline(never)]
-    fn get_random(&mut self, buf: &mut [u8], delay: &mut DelayWrapper) -> Result<(), Se050Error> {
+    fn get_random(
+        &mut self,
+        buf: &mut [u8],
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<(), Se050Error> {
         let mut buflen: [u8; 2] = [0, 0];
         BE::write_u16(&mut buflen, buf.len() as u16);
 
@@ -6641,12 +6666,12 @@ where
     /* NOTE: hardcoded Object ID 0x20e8a001! &[0x20, 0xe8, 0xa0, 0x01]*/
 
     #[inline(never)]
-    //fn generate_p256_key(&mut self, delay: &mut DelayWrapper) -> Result<ObjectId, Se050Error> {
+    //fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
 
     fn generate_p256_key(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<ObjectId, Se050Error> {
         debug!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
 
@@ -6710,7 +6735,7 @@ where
     fn generate_ed255_key_pair(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<ObjectId, Se050Error> {
         // let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa0, 0x02]);
         //  let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa1, 0x02]);
@@ -6765,7 +6790,7 @@ where
     fn delete_secure_object(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         debug!("Se050 crate: SE050 delete_secure_object DEBUG\n ");
 
@@ -6811,7 +6836,7 @@ where
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         debug!("Se050 crate: SE050 check_object_exist DEBUG \n");
 
@@ -6884,12 +6909,12 @@ where
     //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey    P.58
     //P1_EC 4.3.19 ECCurve P.42
     #[inline(never)]
-    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut DelayWrapper) -> Result<(), Se050Error>
+    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
     fn write_ec_key(
         &mut self,
         objectid: &[u8; 4],
         eccurve: &[u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
         // let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);

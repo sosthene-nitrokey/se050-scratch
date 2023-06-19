@@ -11,18 +11,6 @@ pub const MAX_T1_FRAME_SIZE: usize = 3 + MAX_IFSC + 2;
 // 8 TLV payload objects should be enough for every request?
 pub const MAX_TLVS: usize = 8;
 
-pub struct DelayWrapper {
-    pub inner: &'static mut dyn DelayMs<u32>,
-}
-impl<T> From<&'static mut T> for DelayWrapper
-where
-    T: DelayMs<u32>,
-{
-    fn from(delay: &'static mut T) -> Self {
-        Self { inner: delay }
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////////
 
 pub enum Iso7816Error {
@@ -396,19 +384,26 @@ pub enum T1Error {
 }
 
 pub trait T1Proto {
-    fn send_apdu(&mut self, apdu: &CApdu, delay: &mut DelayWrapper) -> Result<(), T1Error>;
-    fn send_apdu_raw(&mut self, apdu: &RawCApdu, delay: &mut DelayWrapper) -> Result<(), T1Error>;
+    fn send_apdu(&mut self, apdu: &CApdu, delay: &mut dyn DelayMs<u32>) -> Result<(), T1Error>;
+    fn send_apdu_raw(
+        &mut self,
+        apdu: &RawCApdu,
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<(), T1Error>;
     fn receive_apdu_raw<'a>(
         &mut self,
         buf: &'a mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<RawRApdu<'a>, T1Error>;
     fn receive_apdu<'a>(
         &mut self,
         buf: &'a mut [u8],
-        delay: &mut DelayWrapper,
+        delay: &mut dyn DelayMs<u32>,
     ) -> Result<RApdu<'a>, T1Error>;
-    fn interface_soft_reset(&mut self, delay: &mut DelayWrapper) -> Result<AnswerToReset, T1Error>;
+    fn interface_soft_reset(
+        &mut self,
+        delay: &mut dyn DelayMs<u32>,
+    ) -> Result<AnswerToReset, T1Error>;
 }
 
 //////////////////////////////////////////////////////////////////////////////
