@@ -6619,7 +6619,7 @@ where
             Se050ApduInstruction::Mgmt.into(),
             Se050ApduP1CredType::Default.into(),
             Se050ApduP2::Random.into(),
-            Some(0),
+            Some(buf.len()),
         );
 
         capdu.push(tlv1);
