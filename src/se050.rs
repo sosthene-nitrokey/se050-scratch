@@ -1376,7 +1376,7 @@ where
             return Err(Se050Error::UnknownError);
         }
         self.atr_info = r.ok();
-        debug!("SE050 ATR: {:?}", self.atr_info.as_ref().unwrap());
+        trace_now!("SE050 ATR: {:?}", self.atr_info.as_ref().unwrap());
 
         /* Step 2: send GP SELECT to choose SE050 JCOP APP, parse APP version */
         let app_id: [u8; 16] = [
@@ -1417,7 +1417,7 @@ where
             features: BE::read_u16(&adata[3..5]),
             securebox_version: BE::read_u16(&adata[5..7]),
         });
-        debug!("SE050 App: {:?}", self.app_info.as_ref().unwrap());
+        trace_now!("SE050 App: {:?}", self.app_info.as_ref().unwrap());
 
         Ok(())
     }
@@ -1493,7 +1493,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 create_session OK");
+        trace_now!("SE050 create_session OK");
         Ok(())
     }
 
@@ -1534,7 +1534,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 exchange_session_data OK");
+        trace_now!("SE050 exchange_session_data OK");
         Ok(())
     }
 
@@ -1579,7 +1579,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 process_session_cmd OK");
+        trace_now!("SE050 process_session_cmd OK");
         Ok(())
     }
 
@@ -1618,7 +1618,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 refresh_session OK");
+        trace_now!("SE050 refresh_session OK");
         Ok(())
     }
 
@@ -1655,7 +1655,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050close_session OK");
+        trace_now!("SE050close_session OK");
         Ok(())
     }
 
@@ -1695,7 +1695,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 verify_session_user_id OK");
+        trace_now!("SE050 verify_session_user_id OK");
         Ok(())
     }
 
@@ -1783,7 +1783,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 eckey_session_internal_authenticate OK");
+        trace_now!("SE050 eckey_session_internal_authenticate OK");
         Ok(())
     }
 
@@ -1834,7 +1834,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 eckey_session_get_eckapublic_key OK");
+        trace_now!("SE050 eckey_session_get_eckapublic_key OK");
         Ok(())
     }
 
@@ -1896,7 +1896,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 set_lock_state OK");
+        trace_now!("SE050 set_lock_state OK");
         Ok(())
     }
 
@@ -1943,7 +1943,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 set_platform_scp_request OK");
+        trace_now!("SE050 set_platform_scp_request OK");
         Ok(())
     }
 
@@ -1985,7 +1985,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050  set_applet_features OK");
+        trace_now!("SE050  set_applet_features OK");
         Ok(())
     }
 
@@ -2040,7 +2040,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 GenEccurve {:x} : OK",eccurve);
+        trace_now!("SE050 GenEccurve {:x} : OK",eccurve);
         Ok(ObjectId([0xae, 0x51, 0xae, 0x51]))
     }
     */
@@ -2090,10 +2090,10 @@ where
              return Err(Se050Error::UnknownError);
          }
 
-         //debug!("SE050 write_ec_key {:x} : OK",eccurve);
+         //trace_now!("SE050 write_ec_key {:x} : OK",eccurve);
 
-         //debug!("SE050 write_ec_key   : OK" );
-         debug!("SE050 write_ec_key {:x?} : OK",eccurve);
+         //trace_now!("SE050 write_ec_key   : OK" );
+         trace_now!("SE050 write_ec_key {:x?} : OK",eccurve);
 
          Ok(())
      }
@@ -2149,7 +2149,7 @@ where
 
           //
            // Ok(ObjectId([0x21, 0xa0,  0xe8, 0x20]))
-           debug!("SE050 GenP256 OK");
+           trace_now!("SE050 GenP256 OK");
             Ok(ObjectId([0x20, 0xE8, 0xA0, 0x01]))
 
         }
@@ -2218,14 +2218,14 @@ where
                 return Err(Se050Error::UnknownError);
             }
 
-            //debug!("SE050 write_ec_key {:x} : OK",eccurve);
+            //trace_now!("SE050 write_ec_key {:x} : OK",eccurve);
 
-            //debug!("SE050 write_ec_key   : OK" );
-           // debug!("SE050 generate_ed255_key_pair {:x?} : OK",eccurve);
+            //trace_now!("SE050 write_ec_key   : OK" );
+           // trace_now!("SE050 generate_ed255_key_pair {:x?} : OK",eccurve);
           // Ok(())
 
 
-            debug!("SE050 generate_ed255_key_pair OK");
+            trace_now!("SE050 generate_ed255_key_pair OK");
             //Ok(ObjectId([0xae, 0x52, 0xae, 0x52]))
             //Ok(ObjectId([0x22, 0xa0, 0xe8, 0x20]))
             Ok(ObjectId([0x20, 0xE8, 0xA0, 0x02]))
@@ -2279,7 +2279,7 @@ where
                return Err(Se050Error::UnknownError);
            }
 
-           debug!("SE050 GenP256 OK");
+           trace_now!("SE050 GenP256 OK");
            Ok(())
       }
     */
@@ -2368,8 +2368,8 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        //debug!("SE050 write_rsa_key {:x} : OK",eccurve);
-        debug!("SE050 write_rsa_key : OK");
+        //trace_now!("SE050 write_rsa_key {:x} : OK",eccurve);
+        trace_now!("SE050 write_rsa_key : OK");
 
         Ok(())
     }
@@ -2515,7 +2515,7 @@ where
 
         //  Ok(())
 
-        debug!("SE050 GenAES OK");
+        trace_now!("SE050 GenAES OK");
         Ok(ObjectId([0x20, 0xE8, 0xA0, 0x02]))
     }
 
@@ -2732,7 +2732,7 @@ where
             return Err(Se050Error::UnknownError);
         }
         enc.copy_from_slice(tlv1_ret.data());
-        debug!("SE050 EncryptAESOneshot OK");
+        trace_now!("SE050 EncryptAESOneshot OK");
         Ok(())
     }
 
@@ -2781,7 +2781,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 write_user_id OK");
+        trace_now!("SE050 write_user_id OK");
         Ok(())
     }
 
@@ -3089,7 +3089,7 @@ where
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
-        debug!("Se050 crate: SE050 read_secure_object DEBUG \n");
+        trace_now!("Se050 crate: SE050 read_secure_object DEBUG \n");
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -3104,7 +3104,7 @@ where
 
         capdu.push(tlv1);
 
-        debug!("Se050 crate: SE050 read_secure_object tlv1 push DEBUG \n");
+        trace_now!("Se050 crate: SE050 read_secure_object tlv1 push DEBUG \n");
 
         self.t1_proto
             .send_apdu(&capdu, delay)
@@ -3129,19 +3129,19 @@ where
 
         buf.copy_from_slice(tlv1_ret.data());
 
-        debug!("Se050 crate: SE050 read_secure_object buf : {:#?}\n", buf);
+        trace_now!("Se050 crate: SE050 read_secure_object buf : {:#?}\n", buf);
 
-        debug!(
+        trace_now!(
             "Se050 crate: SE050 read_secure_object tlv1_ret : {:#?} \n",
             tlv1_ret
         );
 
-        debug!(
+        trace_now!(
             "Se050 crate: SE050 read_secure_object tlv1_ret.data() : {:#?}\n",
             tlv1_ret.data()
         );
 
-        debug!("Se050 crate:  SE050 read_secure_object OK \n ");
+        trace_now!("Se050 crate:  SE050 read_secure_object OK \n ");
 
         Ok(())
     }
@@ -4738,9 +4738,9 @@ where
                 return Err(Se050Error::UnknownError);
             }
             enc.copy_from_slice(tlv1_ret.data());
-          //  debug!("SE050 EncryptAESOneshot {:x} OK",  cipher_mode );
-           // debug!("SE050 EncryptAESOneshot   OK",  cipher_mode );
-           debug!("SE050 EncryptAESOneshot {:x?} OK",  cipher_mode );
+          //  trace_now!("SE050 EncryptAESOneshot {:x} OK",  cipher_mode );
+           // trace_now!("SE050 EncryptAESOneshot   OK",  cipher_mode );
+           trace_now!("SE050 EncryptAESOneshot {:x?} OK",  cipher_mode );
 
 
 
@@ -4821,9 +4821,9 @@ where
             return Err(Se050Error::UnknownError);
         }
         enc.copy_from_slice(tlv1_ret.data());
-        // debug!("SE050 DecryptAESOneshot {:x} OK", cipher_mode );
-        //debug!("SE050 DecryptAESOneshot  OK",   );
-        debug!("SE050 DecryptAESOneshot {:x?} OK", cipher_mode);
+        // trace_now!("SE050 DecryptAESOneshot {:x} OK", cipher_mode );
+        //trace_now!("SE050 DecryptAESOneshot  OK",   );
+        trace_now!("SE050 DecryptAESOneshot {:x?} OK", cipher_mode);
 
         Ok(())
     }
@@ -4894,9 +4894,9 @@ where
             return Err(Se050Error::UnknownError);
         }
         enc.copy_from_slice(tlv1_ret.data());
-        // debug!("SE050 EncryptDESOneshot {:x} OK",  cipher_mode );
-        //   debug!("SE050 EncryptDESOneshot   OK",   );
-        debug!("SE050 EncryptDESOneshot {:x?} OK", cipher_mode);
+        // trace_now!("SE050 EncryptDESOneshot {:x} OK",  cipher_mode );
+        //   trace_now!("SE050 EncryptDESOneshot   OK",   );
+        trace_now!("SE050 EncryptDESOneshot {:x?} OK", cipher_mode);
         Ok(())
     }
 
@@ -4975,9 +4975,9 @@ where
             return Err(Se050Error::UnknownError);
         }
         enc.copy_from_slice(tlv1_ret.data());
-        //  debug!("SE050 DecryptDESOneshot {:x} OK", cipher_mode );
-        // debug!("SE050 DecryptDESOneshot   OK"    );
-        debug!("SE050 DecryptDESOneshot {:x?} OK", cipher_mode);
+        //  trace_now!("SE050 DecryptDESOneshot {:x} OK", cipher_mode );
+        // trace_now!("SE050 DecryptDESOneshot   OK"    );
+        trace_now!("SE050 DecryptDESOneshot {:x?} OK", cipher_mode);
 
         Ok(())
     }
@@ -5850,7 +5850,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 tls_generate_random OK");
+        trace_now!("SE050 tls_generate_random OK");
         Ok(())
     }
 
@@ -5920,7 +5920,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 tls_calculate_pre_master_secret OK");
+        trace_now!("SE050 tls_calculate_pre_master_secret OK");
         Ok(())
     }
 
@@ -6000,7 +6000,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 tls_perform_prf OK");
+        trace_now!("SE050 tls_perform_prf OK");
         Ok(())
     }
 
@@ -6079,7 +6079,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 i2cm_execute_command_set OK");
+        trace_now!("SE050 i2cm_execute_command_set OK");
         Ok(())
     }
 
@@ -6144,7 +6144,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 digest_init OK");
+        trace_now!("SE050 digest_init OK");
         Ok(())
     }
 
@@ -6193,7 +6193,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 digest_update OK");
+        trace_now!("SE050 digest_update OK");
         Ok(())
     }
 
@@ -6242,7 +6242,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 digest_final OK");
+        trace_now!("SE050 digest_final OK");
         Ok(())
     }
 
@@ -6291,7 +6291,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 digest_one_shot OK");
+        trace_now!("SE050 digest_one_shot OK");
         Ok(())
     }
 
@@ -6341,7 +6341,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 get_version OK");
+        trace_now!("SE050 get_version OK");
         Ok(())
     }
 
@@ -6376,7 +6376,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 get_timestamp OK");
+        trace_now!("SE050 get_timestamp OK");
         Ok(())
     }
 
@@ -6425,7 +6425,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 get_free_memory OK");
+        trace_now!("SE050 get_free_memory OK");
         Ok(())
     }
 
@@ -6473,7 +6473,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("SE050 delete_all OK");
+        trace_now!("SE050 delete_all OK");
 
         Ok(())
     }
@@ -6488,7 +6488,7 @@ where
         fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>
         {
 
-        debug!("Se050 crate: SE050 delete_secure_object DEBUG  ");
+        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  ");
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -6508,7 +6508,7 @@ where
 
         );
 
-        debug!("Se050 crate: SE050 delete_secure_object DEBUG  tlv1");
+        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  tlv1");
         capdu.push(tlv1);
 
         self.t1_proto
@@ -6527,7 +6527,7 @@ where
         }
 
 
-        debug!("Se050 crate: SE050 delete secure object OK");
+        trace_now!("Se050 crate: SE050 delete secure object OK");
 
         Ok(())
 
@@ -6543,11 +6543,11 @@ where
     /* NOTE: hardcoded Object ID 0xae51ae51! */
     fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
 
-        debug!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
+        trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
         //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x59, 0xae, 0x59]);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa0, 0x06]);
 
-        debug!("Se050 crate: SE050 GenP256 DEBUG  tlv2");
+        trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv2");
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0x03]);	// NIST P-256
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
@@ -6568,10 +6568,10 @@ where
         );
         capdu.push(tlv1);
 
-        debug!("Se050 crate: SE050 GenP256 DEBUG pushtlv1");
+        trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv1");
 
         capdu.push(tlv2);
-        debug!("Se050 crate: SE050 GenP256 DEBUG pushtlv2");
+        trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv2");
 
         self.t1_proto
             .send_apdu(&capdu, delay)
@@ -6587,7 +6587,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("Se050 crate: SE050 GenP256 OK");
+        trace_now!("Se050 crate: SE050 GenP256 OK");
 
 
         Ok(ObjectId([0x20, 0xe8, 0xa0, 0x06]))
@@ -6619,20 +6619,26 @@ where
             Se050ApduInstruction::Mgmt.into(),
             Se050ApduP1CredType::Default.into(),
             Se050ApduP2::Random.into(),
-            Some(0x00),
+            Some(0),
         );
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        trace_now!("Sending apdu");
+        self.t1_proto.send_apdu(&capdu, delay).map_err(|_err| {
+            trace_now!("Got error: {:?}", _err);
+            Se050Error::UnknownError
+        })?;
 
-        let mut rapdu_buf: [u8; 260] = [0; 260];
+        let mut rapdu_buf = [0; 400];
+        trace_now!("Receiving apdu");
         let rapdu = self
             .t1_proto
             .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+            .map_err(|_err| {
+                trace_now!("Got error: {:?}", _err);
+                Se050Error::UnknownError
+            })?;
 
         if rapdu.sw != 0x9000 {
             error!("Se050 crate: SE050 GetRandom Failed: {:x}", rapdu.sw);
@@ -6651,9 +6657,9 @@ where
 
         buf.copy_from_slice(tlv1_ret.data());
 
-        debug!("Se050 crate: buf {:#?}", buf);
+        trace_now!("Se050 crate: buf {:#?}", buf);
 
-        debug!("Se050 crate: SE050 GetRandom OK ");
+        trace_now!("Se050 crate: SE050 GetRandom OK ");
 
         Ok(())
     }
@@ -6674,13 +6680,13 @@ where
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayMs<u32>,
     ) -> Result<ObjectId, Se050Error> {
-        debug!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
+        trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
 
         // let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa1, 0x01]);
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
-        debug!("Se050 crate: SE050 GenP256 DEBUG  tlv2");
+        trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv2");
 
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0x03]); // NIST P-256
 
@@ -6694,11 +6700,11 @@ where
 
         capdu.push(tlv1);
 
-        debug!("Se050 crate: SE050 GenP256 DEBUG pushtlv1");
+        trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv1");
 
         capdu.push(tlv2);
 
-        debug!("Se050 crate: SE050 GenP256 DEBUG pushtlv2");
+        trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv2");
 
         self.t1_proto
             .send_apdu(&capdu, delay)
@@ -6716,7 +6722,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("Se050 crate: SE050 GenP256 OK");
+        trace_now!("Se050 crate: SE050 GenP256 OK");
 
         Ok(ObjectId([0x20, 0xe8, 0xa1, 0x01]))
     }
@@ -6742,11 +6748,11 @@ where
         //  let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa1, 0x02]);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
-        debug!("Se050 crate: SE050 Gened255 DEBUG  tlv1");
+        trace_now!("Se050 crate: SE050 Gened255 DEBUG  tlv1");
 
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0x40]); // Se050ECCurveconstants //ED255
 
-        debug!("Se050 crate: SE050 Gened255 DEBUG  tlv2");
+        trace_now!("Se050 crate: SE050 Gened255 DEBUG  tlv2");
 
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
@@ -6758,11 +6764,11 @@ where
 
         capdu.push(tlv1);
 
-        debug!("Se050 crate: SE050 Gened255 DEBUG pushtlv1");
+        trace_now!("Se050 crate: SE050 Gened255 DEBUG pushtlv1");
 
         capdu.push(tlv2);
 
-        debug!("Se050 crate: SE050 Gened255 DEBUG pushtlv2");
+        trace_now!("Se050 crate: SE050 Gened255 DEBUG pushtlv2");
 
         self.t1_proto
             .send_apdu(&capdu, delay)
@@ -6780,7 +6786,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("Se050 crate: SE050 ED255 OK");
+        trace_now!("Se050 crate: SE050 ED255 OK");
 
         Ok(ObjectId([0x20, 0xe8, 0xa1, 0x02]))
     }
@@ -6793,7 +6799,7 @@ where
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
-        debug!("Se050 crate: SE050 delete_secure_object DEBUG\n ");
+        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG\n ");
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -6806,7 +6812,7 @@ where
             None,
         );
 
-        debug!("Se050 crate: SE050 delete_secure_object DEBUG  tlv1 \n");
+        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  tlv1 \n");
         capdu.push(tlv1);
 
         self.t1_proto
@@ -6825,7 +6831,7 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        debug!("Se050 crate: SE050 delete secure object OK\n");
+        trace_now!("Se050 crate: SE050 delete secure object OK\n");
 
         Ok(())
     }
@@ -6839,7 +6845,7 @@ where
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayMs<u32>,
     ) -> Result<(), Se050Error> {
-        debug!("Se050 crate: SE050 check_object_exist DEBUG \n");
+        trace_now!("Se050 crate: SE050 check_object_exist DEBUG \n");
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -6879,27 +6885,27 @@ where
 
         //buf.clone_from_slice(tlv1_ret.data());
 
-        debug!("Se050 crate  buf : {:#?}\n", buf);
+        trace_now!("Se050 crate  buf : {:#?}\n", buf);
 
-        debug!(
+        trace_now!(
             "Se050 crate Check Object Exist tlv1_ret : {:#?} \n",
             tlv1_ret
         );
 
-        debug!(
+        trace_now!(
             "Se050 crate Check Object Exist tlv1_ret.data() : {:#?}\n",
             tlv1_ret.data()
         );
 
         if buf.contains(&1) {
-            debug!("Object: {:#?} exist \n", objectidentifier);
+            trace_now!("Object: {:#?} exist \n", objectidentifier);
         } else if buf.contains(&2) {
-            debug!("Object: {:#?} does not exist \n", objectidentifier);
+            trace_now!("Object: {:#?} does not exist \n", objectidentifier);
         } else {
-            debug!("Object: {:#?} UnknownError \n", objectidentifier);
+            trace_now!("Object: {:#?} UnknownError \n", objectidentifier);
         }
 
-        debug!("Se050 crate: SE050 Check Object Exist OK \n ");
+        trace_now!("Se050 crate: SE050 Check Object Exist OK \n ");
 
         Ok(())
     }
@@ -6935,10 +6941,10 @@ where
         //    capdu.push(tlvp);
 
         capdu.push(tlv1);
-        debug!("Se050 crate: WRITE ECKEY DEBUG pushtlv1");
+        trace_now!("Se050 crate: WRITE ECKEY DEBUG pushtlv1");
 
         capdu.push(tlv2);
-        debug!("Se050 crate: WRITE ECKEY DEBUG pushtlv2");
+        trace_now!("Se050 crate: WRITE ECKEY DEBUG pushtlv2");
 
         //  capdu.push(tlv3);
 
@@ -6961,11 +6967,11 @@ where
             return Err(Se050Error::UnknownError);
         }
 
-        //debug!("SE050 write_ec_key {:x} : OK",eccurve);
+        //trace_now!("SE050 write_ec_key {:x} : OK",eccurve);
 
-        //debug!("SE050 write_ec_key   : OK" );
+        //trace_now!("SE050 write_ec_key   : OK" );
 
-        debug!("SE050 write_ec_key {:#?} : OK", eccurve);
+        trace_now!("SE050 write_ec_key {:#?} : OK", eccurve);
 
         Ok(())
     }

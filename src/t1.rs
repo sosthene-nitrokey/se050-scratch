@@ -22,14 +22,14 @@ const TWI_RETRY_DELAY_MS: u32 = 2;
 fn maybe_debug(label: &str, data: &[u8]) {
     if data.len() > 32 {
         let (dh, dt) = data.split_at(16);
-        debug!(
+        trace_now!(
             "{} {:02x?}...{:02x?}",
             label,
             dh,
             &dt[dt.len() - 16..dt.len()]
         );
     } else {
-        debug!("{} {:02x?}", label, data);
+        trace_now!("{} {:02x?}", label, data);
     }
 }
 
@@ -54,14 +54,14 @@ where
         for _i in 0..TWI_RETRIES {
             let e = self.twi.write(self.se_address as u8, data);
             if e.is_ok() {
-                trace!("t1w ok({})", _i);
+                trace_now!("t1w ok({})", _i);
                 return Ok(());
             }
             delay.delay_ms(TWI_RETRY_DELAY_MS);
             // TODO: we should only loop on AddressNack errors
             // but the existing traits don't provide an API for that
         }
-        trace!("t1w err");
+        trace_now!("t1w err");
         Err(T1Error::TransmitError)
     }
 
@@ -91,7 +91,9 @@ where
             return Err(T1Error::BufferOverrunError(3));
         }
         // read T1 frame header
+        trace_now!("Reading");
         self.twi_read(&mut buf[0..3], delay)?;
+        trace_now!("Read");
         let pcb = buf[1].try_into().map_err(|_| T1Error::ProtocolError)?;
         let mut header = T1Header {
             nad: buf[0],
@@ -283,7 +285,9 @@ where
     ) -> Result<RawRApdu<'a>, T1Error> {
         let mut buf_offset: usize = 0;
         loop {
+            trace_now!("Getting frame");
             let header = self.receive_frame(&mut buf[buf_offset..], delay)?;
+            trace_now!("Got frame");
             if let T1PCB::I(seq, multi) = header.pcb {
                 if seq != self.iseq_rcv {
                     return Err(T1Error::ProtocolError);
@@ -298,6 +302,7 @@ where
         }
 
         if buf_offset < 2 {
+            trace_now!("Bad offset");
             return Err(T1Error::ProtocolError);
         }
         let sw = BE::read_u16(&buf[buf_offset - 2..buf_offset]);
