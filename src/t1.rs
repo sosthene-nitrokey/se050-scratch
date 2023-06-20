@@ -180,11 +180,10 @@ where
         loop {
             buf.clear();
             loop {
-                let v = apdu_iter.next();
-                if v.is_none() {
+                let Some(v) = apdu_iter.next() else {
                     break;
-                }
-                buf.push(v.unwrap()).ok();
+                };
+                buf.push(v).ok();
                 if buf.len() == MAX_IFSC {
                     peek = apdu_iter.next();
                     break;
