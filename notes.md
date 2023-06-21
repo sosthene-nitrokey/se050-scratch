@@ -65,3 +65,26 @@ Bitflags and extensions defined in 4.3.34.2 - AN12413
 
 Serialization of the whole thing?
 
+Looking a [se050-nano-packange](https://github.com/NXPPlugNTrust/nano-package/blob/master/examples/se05x_crypto/src/ex_se05x_crypto.c#L565):
+
+```c
+policyBuf[policyBuflen++] = 0; //Update At end.
+
+policyBuf[policyBuflen++] = (uint8_t)((AuthObjId >> 3 * 8) & 0xFF);
+policyBuf[policyBuflen++] = (uint8_t)((AuthObjId >> 2 * 8) & 0xFF);
+policyBuf[policyBuflen++] = (uint8_t)((AuthObjId >> 1 * 8) & 0xFF);
+policyBuf[policyBuflen++] = (uint8_t)((AuthObjId >> 0 * 8) & 0xFF);
+
+policyBuf[policyBuflen++] = (uint8_t)((policyHeader >> 3 * 8) & 0xFF);
+policyBuf[policyBuflen++] = (uint8_t)((policyHeader >> 2 * 8) & 0xFF);
+policyBuf[policyBuflen++] = (uint8_t)((policyHeader >> 1 * 8) & 0xFF);
+policyBuf[policyBuflen++] = (uint8_t)((policyHeader >> 0 * 8) & 0xFF);
+
+policyBuf[0] = policyBuflen - 1;
+```
+
+My assumption:
+
+Policy = concatenation of policysets
+Policyset = total length (1byte) || AuthObjId || AccessRuleHeader (bitflags) || Access Rule extension
+
