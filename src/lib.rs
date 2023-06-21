@@ -3,6 +3,7 @@
 extern crate delog;
 delog::generate_macros!();
 
+pub mod policies;
 pub mod se050;
 pub mod t1;
 pub mod types;

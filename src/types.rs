@@ -444,4 +444,5 @@ pub type Se050CRC = crc16::State<crc16::X_25>;
 
 //////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ObjectId(pub [u8; 4]);

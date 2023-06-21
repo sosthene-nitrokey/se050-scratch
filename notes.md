@@ -53,4 +53,15 @@ Workflow:
 2. All commands are wrapped in a `ProcessSessionCmd`
 
 
+Policies
+========
+
+Policy set contains multiple policies.
+Policy contains and Auth Object ID and an access rule, the access rule applies to the auth object ID.
+Access rules are defined by bitflags + extensions.
+
+
+Bitflags and extensions defined in 4.3.34.2 - AN12413
+
+Serialization of the whole thing?
 
