@@ -57,12 +57,12 @@ pub struct PcrExtension {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ObjectPolicy {
+pub struct ObjectAccessRule {
     flags: ObjectPolicyFlags,
     require_pcr_value: Option<PcrExtension>,
 }
 
-impl ObjectPolicy {
+impl ObjectAccessRule {
     pub const fn from_flags(flags: ObjectPolicyFlags) -> Self {
         assert!(!flags.contains(ObjectPolicyFlags::REQUIRE_PCR_VALUE));
         Self {
@@ -95,6 +95,38 @@ impl ObjectPolicy {
         } else {
             self.flags.bits().to_be_bytes().into_iter().collect()
         }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Policy {
+    pub object_id: ObjectId,
+    pub access_rule: ObjectAccessRule,
+}
+
+impl Policy {
+    pub fn to_bytes(self) -> heapless::Vec<u8, 41> {
+        let ar = self.access_rule.to_bytes();
+        self.object_id.0.into_iter().chain(ar).collect()
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct PolicySet<'a>(pub &'a [Policy]);
+
+impl<'a> PolicySet<'a> {
+    pub fn to_bytes(self, buffer: &mut [u8]) -> Option<&[u8]> {
+        let mut offset = 0;
+        for i in self.0 {
+            let bytes = i.to_bytes();
+            if buffer.len() - offset < bytes.len() {
+                return None;
+            }
+
+            buffer[offset..][..bytes.len()].copy_from_slice(&bytes);
+            offset += bytes.len();
+        }
+        Some(&buffer[..offset])
     }
 }
 
