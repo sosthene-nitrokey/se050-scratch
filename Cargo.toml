@@ -32,5 +32,5 @@ log-error = []
 log-none = []
 
 [patch.crates-io]
-iso7816 = { git = "https://github.com/sosthene-nitrokey/iso7816.git", rev = "f3725685b59fbdb49650f117496e0926fc74b11e" }
+iso7816 = { git = "https://github.com/sosthene-nitrokey/iso7816.git", rev = "55859038e0d29ea709b6401fbac6fd18632c2776" }
 delog = { git = "https://github.com/sosthene-nitrokey/delog.git", rev = "41901aa4d44e64f729a4d5ec5638c3911b8184a9" }

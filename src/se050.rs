@@ -2,17 +2,51 @@ use crate::macros::enum_u8;
 use crate::types::*;
 use byteorder::{ByteOrder, BE};
 use core::convert::{From, TryFrom};
-use embedded_hal::blocking::delay::DelayMs;
+use embedded_hal::blocking::delay::DelayUs;
+use iso7816::Status;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Se050Error {
+    Status(Status),
     UnknownError,
     T1Error(T1Error),
 }
 
-impl From<Se050Error> for iso7816::Status {
-    fn from(_value: Se050Error) -> Self {
-        iso7816::Status::UnspecifiedNonpersistentExecutionError
+impl From<T1Error> for Se050Error {
+    fn from(value: T1Error) -> Self {
+        Self::T1Error(value)
+    }
+}
+
+impl From<Status> for Se050Error {
+    fn from(value: Status) -> Self {
+        Self::Status(value)
+    }
+}
+
+impl From<Se050Error> for Status {
+    fn from(value: Se050Error) -> Self {
+        match value {
+            // 6400
+            Se050Error::UnknownError => Status::UnspecifiedNonpersistentExecutionError,
+            // 6300
+            Se050Error::T1Error(T1Error::TransmitError) => Status::VerificationFailed,
+            // 6700
+            Se050Error::T1Error(T1Error::ReceiveError) => Status::WrongLength,
+            // 61xx
+            Se050Error::T1Error(T1Error::BufferOverrunError(b)) => Status::MoreAvailable(b as _),
+            // 6F00
+            Se050Error::T1Error(T1Error::ChecksumError) => Status::UnspecifiedCheckingError,
+            // 6500
+            Se050Error::T1Error(T1Error::ProtocolError) => {
+                Status::UnspecifiedPersistentExecutionError
+            }
+            // 6881
+            Se050Error::T1Error(T1Error::TlvParseError) => Status::LogicalChannelNotSupported,
+            // 63Cx
+            Se050Error::T1Error(T1Error::RCodeReceived(b)) => Status::RemainingRetries(b),
+            Se050Error::Status(status) => status,
+        }
     }
 }
 
@@ -587,9 +621,9 @@ enum_u8! {
 //trait-Se050Device ->  struct Se050
 pub trait Se050Device {
     //OLD VERSION
-    fn enable(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn enable(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
     //OLD VERSION
-    fn disable(&mut self, _delay: &mut dyn DelayMs<u32>);
+    fn disable(&mut self, _delay: &mut dyn DelayUs<u32>);
 
     //See AN12413, //  4.4 Applet selection P.47-48
     /*
@@ -602,14 +636,14 @@ pub trait Se050Device {
     fn create_session(
         &mut self,
         authobjectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,4.5 Session management // 4.5.1 Generic session commands //4.5.1.2 ExchangeSessionData P.49
     fn exchange_session_data(
         &mut self,
         session_policies: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands /4.5.1.3 process_session_cmd P.49-50
@@ -617,38 +651,38 @@ pub trait Se050Device {
         &mut self,
         apducommand: &[u8],
         session_id: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands //4.5.1.4 RefreshSession P.50
     fn refresh_session(
         &mut self,
         policy: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands //4.5.1.4 RefreshSession P.50
-    fn close_session(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn close_session(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5 Session management //4.5.2 UserID session operations // 4.5.2.1 VerifySessionUserID P.51-52
     fn verify_session_user_id(
         &mut self,
         user_idvalue: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.5.4 ECKey session operations //  4.5.4.1 ECKeySessionInternalAuthenticate P.52
     fn eckey_session_internal_authenticate(
         &mut self,
         input_data: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 ,  4.5.4 ECKey session operations //   4.5.4.2 eckey_session_get_eckapublic_key P.53-54
     fn eckey_session_get_eckapublic_key(
         &mut self,
         input_data: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.6 Module management
@@ -658,48 +692,48 @@ pub trait Se050Device {
         &mut self,
         lockindicator: &[u8],
         lockstate: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 , 4.6 Module management //   4.6.2 SetPlatformSCPRequest P.55-56
-    fn set_platform_scp_request(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn set_platform_scp_request(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     //AN12413 // 4.6 Module management  //4.6.3 set_applet_features  P.56 -57
     fn set_applet_features(
         &mut self,
         applet_config: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413,  4.7 Secure Object management
 
     // See AN12413,  4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey //P1_EC ///P.58-59
-    // fn generate_eccurve_key(&mut self, eccurve: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error>; //ERWEITERT
-    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>  ;
+    // fn generate_eccurve_key(&mut self, eccurve: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error>; //ERWEITERT
+    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>  ;
     fn write_ec_key(
         &mut self,
         objectid: &[u8; 4],
         eccurve: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
     //OLD VERSION
-    // fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> ;
+    // fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> ;
     //DEFAULT CONFIGURATION OF SE050
 
     //NEW VERSION
-    // fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],  private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> ;
+    // fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],  private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> ;
     fn generate_p256_key(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<ObjectId, Se050Error>;
 
-    // fn generate_ed255_key_pair(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error>;
+    // fn generate_ed255_key_pair(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error>;
 
     fn generate_ed255_key_pair(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<ObjectId, Se050Error>;
 
     //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject// 4.7.1.2 WriteRSAKey //P.59-60
@@ -708,19 +742,19 @@ pub trait Se050Device {
         policy: &[u8],
         objectid: &[u8; 4],
         keysize: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey //AES key, DES key or HMAC key // P 60/ P.61
 
     //OLD VERSION
-    fn write_aes_key(&mut self, key: &[u8], delay: &mut dyn DelayMs<u32>)
+    fn write_aes_key(&mut self, key: &[u8], delay: &mut dyn DelayUs<u32>)
         -> Result<(), Se050Error>;
 
     //NEW VERSION
-    //  fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    //  fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
-    fn generate_aes_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error>;
+    fn generate_aes_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error>;
 
     fn write_des_key(
         &mut self,
@@ -728,7 +762,7 @@ pub trait Se050Device {
         objectid: &[u8; 4],
         kekid: &[u8; 4],
         key: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     fn write_hmac_key(
@@ -737,7 +771,7 @@ pub trait Se050Device {
         objectid: &[u8; 4],
         kekid: &[u8; 4],
         key: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.4 WriteBinary  //P.61
@@ -748,7 +782,7 @@ pub trait Se050Device {
         file_offset: &[u8; 2],
         file_length: &[u8; 2],
         data1: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject P.57 //4.7.1.5 write_user_id  //P.62
@@ -757,7 +791,7 @@ pub trait Se050Device {
         policy: &[u8],
         objectid: &[u8; 4],
         user_identifier_value: &[u8; 16],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.6 WriteCounter  //P.62
@@ -767,7 +801,7 @@ pub trait Se050Device {
         counterid: &[u8; 4],
         countersize: &[u8; 2],
         counterfile: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject // 4.7.1.7 WritePCR  P.63
@@ -777,7 +811,7 @@ pub trait Se050Device {
         pcrid: &[u8; 4],
         initial_hash_value: &[u8],
         ext: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management // 4.7.1.8  ImportObject P.63-64
@@ -787,7 +821,7 @@ pub trait Se050Device {
         identifier: &[u8; 4],
         rsakeycomponent: &[u8],
         serializedobjectencrypted: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject // 4.7.1.7 WritePCR  P.64
@@ -796,65 +830,65 @@ pub trait Se050Device {
         authdata: &[u8],
         hostpublickeyidentifier: &[u8],
         writesecureobjectcommand: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
-    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     fn read_secure_object(
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
-    ) -> Result<(), Se050Error>;
+        delay: &mut dyn DelayUs<u32>,
+    ) -> Result<usize, Se050Error>;
 
     // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.2 ExportObject // P.67
     fn export_secure_object(
         &mut self,
         objectidentifier: &[u8; 4],
         rsakeycomponent: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.1 ReadType P.67-68
     fn read_type(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject 4.7.4.2 ReadSize P.68
     fn read_size(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.3 ReadIDList P.69
     fn read_id_list(
         &mut self,
         offset: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
-    //  fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    //  fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     fn check_object_exists(
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
-    //fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>;
+    //fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>;
 
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
     fn delete_secure_object(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management
@@ -863,7 +897,7 @@ pub trait Se050Device {
     fn create_eccurve(
         &mut self,
         eccurve: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management //  4.8.2 SetECCurveParam -Set a curve parameter. The curve must have been created first by CreateEcCurve. P.72
@@ -872,24 +906,24 @@ pub trait Se050Device {
         eccurve: &[u8],
         eccurveptaram: &[u8],
         curveparametervalue: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management //  4.8.3 GetECCurveID Get the curve associated with an EC key.. P.72-73
     fn get_eccurve_id(
         &mut self,
         identifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management //  4.8.3 GetECCurveID Get the curve associated with an EC key.. P.73
-    fn read_eccurve_list(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn read_eccurve_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     // See AN12413//   4.8 EC curve management // 4.8.5 DeleteECCurve - Deletes an EC curve P.74
     fn delete_eccurve(
         &mut self,
         eccurve: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.9 Crypto Object management
@@ -900,17 +934,17 @@ pub trait Se050Device {
         cryptoobjectidentifier: &[u8; 2],
         cryptocontext: &[u8],
         cryptoobjectsubtype: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413// 4.9 Crypto Object management // 4.9.2 ReadCryptoObjectList. P.75
-    fn read_crypto_object_list(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn read_crypto_object_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     // See AN12413// 4.9 Crypto Object management // 4.9.3 DeleteCryptoObject P.75 - 76
     fn delete_crypto_object(
         &mut self,
         cryptoobjectidentifier: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC // 4.10.1 Signature generation // 4.10.1.1 ECDSASign P.76-77
@@ -919,7 +953,7 @@ pub trait Se050Device {
         eckeyidentifier: &[u8; 4],
         ecsignaturealgo: &[u8],
         inputdata: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC
@@ -930,7 +964,7 @@ pub trait Se050Device {
         eckeyidentifier: &[u8; 4],
         edsignaturealgo: &[u8],
         inputdata: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC // 4.10.1 Signature generation // 4.10.1.3 ECDAASign P.78
@@ -940,7 +974,7 @@ pub trait Se050Device {
         ecdaasignaturealgo: &[u8],
         hashedinputdata: &[u8; 32],
         randomdata: &[u8; 32],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC // 4.10.2 Signature verification // 4.10.2.1 ECDSAVerify P.79
@@ -950,7 +984,7 @@ pub trait Se050Device {
         ecsignaturealgo: &[u8],
         hashedcomparedata: &[u8],
         asn1signaturedata: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC // 4.10.2 Signature verification // 4.10.2.2 EdDSAVerify P.80
@@ -960,7 +994,7 @@ pub trait Se050Device {
         edsignaturealgo: &[u8],
         plaincomparedata: &[u8],
         signaturedata: &[u8; 64],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.10 Crypto operations EC //  4.10.3 Shared secret generation //  4.10.3.1 ECDHGenerateSharedSecret P.81
@@ -968,7 +1002,7 @@ pub trait Se050Device {
         &mut self,
         eckeyidentifier: &[u8; 4],
         eckey: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.11 Crypto operations RSA
@@ -979,7 +1013,7 @@ pub trait Se050Device {
         rsakeyidentifier: &[u8; 4],
         rsasignaturealgo: &[u8],
         inputdata: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.11 Crypto operations RSA // 4.11.2 Signature Verification  //4.11.2.1 RSAVerify P.82-83
@@ -989,7 +1023,7 @@ pub trait Se050Device {
         rsasignaturealgo: &[u8],
         datatobeverified: &[u8],
         asn1signature: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.11 Crypto operations RSA // 4.11.3 Encryption // 4.11.3.1 RSAEncrypt P.83-84
@@ -998,7 +1032,7 @@ pub trait Se050Device {
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
         datatobeencrypted: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413 // 4.11 Crypto operations RSA // 4.11.3 Encryption // 4.11.3.2 RSADecrypt P.84
@@ -1007,7 +1041,7 @@ pub trait Se050Device {
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
         datatobedecrypted: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.12 Crypto operations AES/DES
@@ -1018,14 +1052,14 @@ pub trait Se050Device {
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
         initializationvector: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
     fn cipher_init_decrypt(
         &mut self,
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
         initializationvector: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.12 Crypto operations AES/DES //4.12.2 CipherUpdate P.85-86
@@ -1033,7 +1067,7 @@ pub trait Se050Device {
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.12 Crypto operations AES/DES //4.12.3 CipherFinal P.86-87
@@ -1041,7 +1075,7 @@ pub trait Se050Device {
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.12 Crypto operations AES/DES //4.12.4 CipherOneShot P.87
@@ -1051,7 +1085,7 @@ pub trait Se050Device {
         ciphermode: &[u8],
         inputdata: &[u8],
         initializationvector: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
     fn cipher_one_shot_decrypt(
         &mut self,
@@ -1059,7 +1093,7 @@ pub trait Se050Device {
         ciphermode: &[u8],
         inputdata: &[u8],
         initializationvector: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //4.12 Crypto operations AES/DES  //4.12.4 CipherOneShot - Encrypt or decrypt data in one shot mode //P.87
@@ -1069,7 +1103,7 @@ pub trait Se050Device {
             &mut self,
             data: &[u8],
             enc: &mut [u8],
-            delay: &mut dyn DelayMs<u32>,
+            delay: &mut dyn DelayUs<u32>,
         ) -> Result<(), Se050Error>;
     */
     //OLD VERSION
@@ -1077,18 +1111,18 @@ pub trait Se050Device {
         &mut self,
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //NEW VERSION
-    //fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayMs<u32>, ) -> Result<(), Se050Error> ;
+    //fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayUs<u32>, ) -> Result<(), Se050Error> ;
     fn decrypt_aes_oneshot(
         &mut self,
         objectid: &[u8; 4],
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     fn encrypt_des_oneshot(
@@ -1097,7 +1131,7 @@ pub trait Se050Device {
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
     fn decrypt_des_oneshot(
         &mut self,
@@ -1105,7 +1139,7 @@ pub trait Se050Device {
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.13 Message Authentication Codes
@@ -1115,7 +1149,7 @@ pub trait Se050Device {
         &mut self,
         mackeybjectidentifier: &[u8; 4],
         cryptobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.13 Message Authentication Codes //4.13.1 MACInit P.87-88
@@ -1123,7 +1157,7 @@ pub trait Se050Device {
         &mut self,
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.13 Message Authentication Codes //4.13.3 MACFinal P.89
@@ -1132,7 +1166,7 @@ pub trait Se050Device {
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
         mactovalidate: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.13 Message Authentication Codes //4.13.4 MACOneShot P.90
@@ -1142,7 +1176,7 @@ pub trait Se050Device {
         macalgo: &[u8],
         datainputtomac: &[u8],
         mactoverify: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.14 Key Derivation Functions
@@ -1155,7 +1189,7 @@ pub trait Se050Device {
         salt: &[u8; 64],
         info: &[u8; 64],
         requestedlength: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413 //4.14 Key Derivation Functions //4.14.2 PBKDF2 P.91-92
@@ -1165,7 +1199,7 @@ pub trait Se050Device {
         salt: &[u8; 64],
         iterationcount: &[u8; 2],
         requestedlength: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support
@@ -1176,7 +1210,7 @@ pub trait Se050Device {
         masterkeyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 4],
         divinput: &[u8; 31],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.2 DFAuthenticateFirst  //4.15.2.1 DFAuthenticateFirstPart1 // P.95-96
@@ -1184,14 +1218,14 @@ pub trait Se050Device {
         &mut self,
         keyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 16],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.2 DFAuthenticateFirst  //4.15.2.2 DFAuthenticateFirstPart2 // P.95-96
     fn dfauthenticatefirstpart2(
         &mut self,
         input: &[u8; 32],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.3.1 DFAuthenticateNonFirstPart1// P.96-97
@@ -1199,18 +1233,18 @@ pub trait Se050Device {
         &mut self,
         keyidentifier: &[u8; 4],
         encryptedcardchallenge: &[u8; 16],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.3.2 DFAuthenticateNonFirstPart2// P.97
     fn dfauthenticatenonfirstpart2(
         &mut self,
         edata: &[u8; 16],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.4 DFDumpSessionKeys// P.97-98
-    fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.5 DFChangeKey// 4.15.5.1 DFChangeKeyPart1 P.98-99
     fn dfchangekeypart1(
@@ -1220,23 +1254,23 @@ pub trait Se050Device {
         setnumber: &[u8],
         desfirekeynumber: &[u8],
         keyversion: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.5 DFChangeKey// 4.15.5.2 DFChangeKeyPart2 P.99
     fn dfchangekeypart2(
         &mut self,
         mac: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413,// 4.15 MIFARE DESFire support //4.15.6 DFKillAuthentication  P.99-100
-    fn dfkillauthentication(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn dfkillauthentication(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     //See AN12413, //4.16 TLS handshake support
 
     //See AN12413, //4.16 TLS handshake support //  4.16.1 TLSGenerateRandom P.100
-    fn tls_generate_random(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn tls_generate_random(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     //See AN12413, //4.16 TLS handshake support //  4.16.2 TLSCalculatePreMasterSecret P.101
     fn tls_calculate_pre_master_secret(
@@ -1245,7 +1279,7 @@ pub trait Se050Device {
         keypairidentifier: &[u8; 4],
         hmackeyidentifier: &[u8; 4],
         inputdata: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413, //4.16 TLS handshake support //  4.16.3 TLSPerformPRF P.101-102
@@ -1256,7 +1290,7 @@ pub trait Se050Device {
         label: &[u8; 64],
         random: &[u8; 32],
         requestlenght: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413, //4.17 I2C controller support
@@ -1268,7 +1302,7 @@ pub trait Se050Device {
         attestationobjectidentifier: &[u8],
         attestationalgo: &[u8],
         freshnessrandom: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413, //4.18 Digest operations
@@ -1277,7 +1311,7 @@ pub trait Se050Device {
     fn digest_init(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //AN12413, //4.18 Digest operations //4.18.2 DigestUpdate // P.106-107
@@ -1285,7 +1319,7 @@ pub trait Se050Device {
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //AN12413, //4.18 Digest operations //4.18.3 DigestFinal // P. 107-108
@@ -1293,7 +1327,7 @@ pub trait Se050Device {
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //AN12413, //4.18 Digest operations //4.18.3 DigestFinal // P. 107-108
@@ -1301,22 +1335,22 @@ pub trait Se050Device {
         &mut self,
         digestmode: &[u8],
         datatobehashed: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //See AN12413, // 4.19 Generic management commands
 
     //AN12413, // 4.19 Generic management commands //4.19.1 GetVersion  P.108 -109
-    fn get_version(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn get_version(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     //AN12413, // 4.19 Generic management commands //4.19.2 get_timestamp P.109
-    fn get_timestamp(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn get_timestamp(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 
     //AN12413, // 4.19 Generic management commands //4.19.2 GetTimestamp P.109
     fn get_free_memory(
         &mut self,
         memoryconstant: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     // See AN12413, //4.19 Generic management commands // P110-11
@@ -1324,11 +1358,11 @@ pub trait Se050Device {
     fn get_random(
         &mut self,
         buf: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error>;
 
     //AN12413, // 4.19 Generic management commands //44.19.5 delete_all P.112
-    fn delete_all(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>;
+    fn delete_all(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
 }
 
 //struct Se050AppInfo ->no further Implementation 20221026
@@ -1368,7 +1402,7 @@ where
     //###########################################################################
     //###########################################################################
     //OLD VERSION
-    fn enable(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn enable(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         /* Step 1: perform interface soft reset, parse ATR */
         let r = self.t1_proto.interface_soft_reset(delay);
         if r.is_err() {
@@ -1391,15 +1425,10 @@ where
             data: &app_id,
             le: Some(0),
         };
-        self.t1_proto
-            .send_apdu_raw(&app_select_apdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu_raw(&app_select_apdu, delay)?;
 
         let mut appid_data: [u8; 11] = [0; 11];
-        let appid_apdu = self
-            .t1_proto
-            .receive_apdu_raw(&mut appid_data, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let appid_apdu = self.t1_proto.receive_apdu_raw(&mut appid_data, delay)?;
 
         let adata = appid_apdu.data;
         let asw = appid_apdu.sw;
@@ -1426,7 +1455,7 @@ where
     //###########################################################################
     //TO-DO
 
-    fn disable(&mut self, _delay: &mut dyn DelayMs<u32>) {
+    fn disable(&mut self, _delay: &mut dyn DelayUs<u32>) {
         // send S:EndApduSession
         // receive ACK
         // power down
@@ -1465,7 +1494,7 @@ where
     fn create_session(
         &mut self,
         authobjectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), authobjectidentifier);
 
@@ -1478,19 +1507,16 @@ where
         );
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 create_session Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 create_session OK");
@@ -1506,7 +1532,7 @@ where
     fn exchange_session_data(
         &mut self,
         session_policies: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), session_policies);
 
@@ -1519,19 +1545,16 @@ where
         );
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 exchange_session_data Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 exchange_session_data OK");
@@ -1548,7 +1571,7 @@ where
         &mut self,
         apducommand: &[u8],
         session_id: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvtgsid = SimpleTlv::new(Se050TlvTag::SessionID.into(), session_id);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), apducommand);
@@ -1564,19 +1587,16 @@ where
         capdu.push(tlvtgsid);
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 process_session_cmd: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 process_session_cmd OK");
@@ -1590,7 +1610,7 @@ where
     fn refresh_session(
         &mut self,
         policy: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvtgsid = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
 
@@ -1603,19 +1623,16 @@ where
         );
         capdu.push(tlvtgsid);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 refresh_session: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 refresh_session OK");
@@ -1631,7 +1648,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn close_session(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn close_session(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -1640,19 +1657,16 @@ where
             None,
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 close_session: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050close_session OK");
@@ -1667,7 +1681,7 @@ where
     fn verify_session_user_id(
         &mut self,
         user_idvalue: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), user_idvalue);
 
@@ -1680,19 +1694,16 @@ where
         );
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 verify_session_user_id Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 verify_session_user_id OK");
@@ -1751,7 +1762,7 @@ where
     fn eckey_session_internal_authenticate(
         &mut self,
         input_data: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), input_data);
 
@@ -1765,19 +1776,14 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!(
-                "SE050 eckey_session_internal_authenticate Failed: {:x}",
+                "SE050 eckey_sessioStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)) Failed: {:x}",
                 rapdu.sw
             );
             return Err(Se050Error::UnknownError);
@@ -1801,7 +1807,7 @@ where
     fn eckey_session_get_eckapublic_key(
         &mut self,
         input_data: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), input_data);
 
@@ -1816,19 +1822,14 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!(
-                "SE050 eckey_session_get_eckapublic_key Failed: {:x}",
+                "SE050 eckey_sessioStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)) Failed: {:x}",
                 rapdu.sw
             );
             return Err(Se050Error::UnknownError);
@@ -1865,7 +1866,7 @@ where
         &mut self,
         lockindicator: &[u8],
         lockstate: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), lockindicator);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag1.into(), lockstate);
@@ -1881,19 +1882,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 set_lock_state Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 set_lock_state OK");
@@ -1919,7 +1917,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn set_platform_scp_request(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn set_platform_scp_request(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -1928,19 +1926,16 @@ where
             None,
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 set_platform_scp_request Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 set_platform_scp_request OK");
@@ -1957,7 +1952,7 @@ where
     fn set_applet_features(
         &mut self,
         applet_config: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), applet_config);
 
@@ -1970,19 +1965,16 @@ where
         );
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050  set_applet_features Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050  set_applet_features OK");
@@ -2014,7 +2006,7 @@ where
 
     //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey    P.58
     //P1_EC 4.3.19 ECCurve P.42
-    fn generate_eccurve_key(&mut self,  eccurve: &[u8],delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
+    fn generate_eccurve_key(&mut self,  eccurve: &[u8],delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &eccurve );	// Se050ECCurveconstants
         let mut capdu = CApdu::new(
@@ -2028,16 +2020,16 @@ where
         capdu.push(tlv2);
         self.t1_proto
             .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+            ?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
         let rapdu = self.t1_proto
             .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+            ?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 GenECCurve {:x} Failed: {:x}", eccurve, rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
         }
 
         trace_now!("SE050 GenEccurve {:x} : OK",eccurve);
@@ -2052,7 +2044,7 @@ where
     //P1_EC 4.3.19 ECCurve P.42
     /*
      #[inline(never)]
-     fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
+     fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
 
      {
          let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
@@ -2075,16 +2067,16 @@ where
 
          self.t1_proto
              .send_apdu(&capdu, delay)
-             .map_err(|_| Se050Error::UnknownError)?;
+             ?;
 
          let mut rapdu_buf: [u8; 16] = [0; 16];
          let rapdu = self.t1_proto
              .receive_apdu(&mut rapdu_buf, delay)
-             .map_err(|_| Se050Error::UnknownError)?;
+             ?;
 
          if rapdu.sw != 0x9000 {
            //  error!("SE050 write_ec_key {:x} Failed: {:x}", eccurve, rapdu.sw);
-           //error!("SE050 write_ec_key   Failed: {:x}",  rapdu.sw);
+           //error!("SE050 write_ec_Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  rapdu.sw);
              error!("SE050 write_ec_key {:x?} Failed: {:x}", eccurve, rapdu.sw);
 
              return Err(Se050Error::UnknownError);
@@ -2111,7 +2103,7 @@ where
     //20E8A001
     //&[0x20, 0xE8, 0xA0, 0x01]
     /*
-        fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
+        fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
             //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
            //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
          let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(),   &[ 0x01, 0xA0, 0xE8,  0x20 ] );
@@ -2131,7 +2123,7 @@ where
 
             self.t1_proto
                 .send_apdu(&capdu, delay)
-                .map_err(|_| Se050Error::UnknownError)?;
+                ?;
 
              let mut rapdu_buf: [u8; 16] = [0; 16];
 
@@ -2139,11 +2131,11 @@ where
 
             let rapdu = self.t1_proto
                 .receive_apdu(&mut rapdu_buf, delay)
-                .map_err(|_| Se050Error::UnknownError)?;
+                ?;
 
             if rapdu.sw != 0x9000 {
                 error!("SE050 GenP256 Failed: {:x}", rapdu.sw);
-                return Err(Se050Error::UnknownError);
+                return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
             }
 
 
@@ -2169,8 +2161,8 @@ where
     /*
 
         #[inline(never)]
-        //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
-        fn generate_ed255_key_pair(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
+        //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
+        fn generate_ed255_key_pair(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
         {
           //  let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
 
@@ -2199,18 +2191,18 @@ where
 
             self.t1_proto
                 .send_apdu(&capdu, delay)
-                .map_err(|_| Se050Error::UnknownError)?;
+                ?;
 
             let mut rapdu_buf: [u8; 16] = [0; 16];
            // let mut rapdu_buf: [u8; 260] = [0; 260];
 
             let rapdu = self.t1_proto
                 .receive_apdu(&mut rapdu_buf, delay)
-                .map_err(|_| Se050Error::UnknownError)?;
+                ?;
 
             if rapdu.sw != 0x9000 {
               //  error!("SE050 write_ec_key {:x} Failed: {:x}", eccurve, rapdu.sw);
-              //error!("SE050 write_ec_key   Failed: {:x}",  rapdu.sw);
+              //error!("SE050 write_ec_Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  rapdu.sw);
                // error!("SE050 generate_ed255_key_pair {:x?} Failed: {:x}", eccurve, rapdu.sw);
 
                 error!("SE050 generate_ed255_key_pair   Failed: {:x}", rapdu.sw);
@@ -2244,7 +2236,7 @@ where
     //P1_EC //  4.3.19 ECCurve NIST_P256 P.42
     /*    #[inline(never)]
 
-       fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],   private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
+       fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],   private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
        {
 
            let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
@@ -2267,16 +2259,16 @@ where
 
            self.t1_proto
                .send_apdu(&capdu, delay)
-               .map_err(|_| Se050Error::UnknownError)?;
+               ?;
 
            let mut rapdu_buf: [u8; 16] = [0; 16];
            let rapdu = self.t1_proto
                .receive_apdu(&mut rapdu_buf, delay)
-               .map_err(|_| Se050Error::UnknownError)?;
+               ?;
 
            if rapdu.sw != 0x9000 {
                error!("SE050 GenP256 Failed: {:x}", rapdu.sw);
-               return Err(Se050Error::UnknownError);
+               return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
            }
 
            trace_now!("SE050 GenP256 OK");
@@ -2333,7 +2325,7 @@ where
         policy: &[u8],
         objectid: &[u8; 4],
         keysize: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
 
@@ -2352,19 +2344,14 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             //  error!("SE050 write_rsa_key {:x} Failed: {:x}", eccurve, rapdu.sw);
-            error!("SE050 write_rsa_key  Failed: {:x}", rapdu.sw);
+            error!("SE050 write_rsaStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))  Failed: {:x}", rapdu.sw);
             return Err(Se050Error::UnknownError);
         }
 
@@ -2382,7 +2369,7 @@ where
         //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey P.60
         //P1_AES //template for
         #[inline(never)]
-        fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+        fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
             if key.len() != 16 {
                 todo!();
             }
@@ -2406,16 +2393,16 @@ where
 
             self.t1_proto
                 .send_apdu(&capdu, delay)
-                .map_err(|_| Se050Error::UnknownError)?;
+                ?;
 
             let mut rapdu_buf: [u8; 260] = [0; 260];
             let rapdu = self.t1_proto
                 .receive_apdu(&mut rapdu_buf, delay)
-                .map_err(|_| Se050Error::UnknownError)?;
+                ?;
 
             if rapdu.sw != 0x9000 {
                 error!("SE050 WriteAESKey Failed: {:x}", rapdu.sw);
-                return Err(Se050Error::UnknownError);
+                return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
             }
 
             Ok(())
@@ -2429,7 +2416,7 @@ where
     fn write_aes_key(
         &mut self,
         key: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         if key.len() != 16 {
             todo!();
@@ -2445,19 +2432,16 @@ where
         );
         capdu.push(tlv1);
         capdu.push(tlv3);
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 WriteAESKey Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -2471,10 +2455,10 @@ where
     //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey P.60
     //P1_AES //template for
     #[inline(never)]
-    //fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    //fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
 
-    //fn generate_aes_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
-    fn generate_aes_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
+    //fn generate_aes_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    fn generate_aes_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
         /*   if key.len() != 16 {
                     todo!();
                 }
@@ -2497,20 +2481,17 @@ where
         //     capdu.push(tlv2);
         //   capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
 
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 WriteAESKey Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         //  Ok(())
@@ -2532,7 +2513,7 @@ where
         objectid: &[u8; 4],
         kekid: &[u8; 4],
         key: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         if key.len() != 16 {
             todo!();
@@ -2556,19 +2537,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 WriteDESKey Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -2587,7 +2565,7 @@ where
         objectid: &[u8; 4],
         kekid: &[u8; 4],
         key: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         if key.len() != 16 {
             todo!();
@@ -2610,19 +2588,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 WriteHMACKey Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -2636,7 +2611,7 @@ where
         file_offset: &[u8; 2],
         file_length: &[u8; 2],
         data1: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
@@ -2651,25 +2626,25 @@ where
             Se050ApduP2::Default.into(),
             Some(0),
         );
-        capdu.push(tlvp);
+
+        if !policy.is_empty() {
+            capdu.push(tlvp);
+        }
         capdu.push(tlv1);
         capdu.push(tlv2);
         capdu.push(tlv3);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 write_binary Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -2684,7 +2659,7 @@ where
         &mut self,
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         if data.len() > 240 || (data.len() % 16 != 0) {
             error!("Input data too long or unaligned");
@@ -2707,19 +2682,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
         capdu.push(tlv3);
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 EncryptAESOneshot Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
@@ -2748,7 +2720,7 @@ where
         policy: &[u8],
         objectid: &[u8; 4],
         user_identifier_value: &[u8; 16],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
 
@@ -2766,19 +2738,16 @@ where
         capdu.push(tlv1);
 
         capdu.push(tlv2);
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 write_user_id  Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 write_user_id OK");
@@ -2804,7 +2773,7 @@ where
         counterid: &[u8; 4],
         countersize: &[u8; 2],
         counterfile: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), counterid);
@@ -2823,19 +2792,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 write_counter Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -2863,7 +2829,7 @@ where
         pcrid: &[u8; 4],
         initial_hash_value: &[u8],
         ext: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), pcrid);
@@ -2882,19 +2848,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 write_pcr Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -2922,7 +2885,7 @@ where
         identifier: &[u8; 4],
         rsakeycomponent: &[u8],
         serializedobjectencrypted: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), identifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsakeycomponent);
@@ -2940,19 +2903,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 import_object Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -2984,7 +2944,7 @@ where
         authdata: &[u8],
         hostpublickeyidentifier: &[u8],
         writesecureobjectcommand: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlva = SimpleTlv::new(Se050TlvTag::ImportAuthData.into(), authdata);
         let tlvb = SimpleTlv::new(Se050TlvTag::ImportAuthKeyID.into(), hostpublickeyidentifier);
@@ -3002,19 +2962,16 @@ where
         capdu.push(tlvb);
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 import_external_object Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3032,7 +2989,7 @@ where
     /*
         // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
         #[inline(never)]
-        fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
+        fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
         {
 
             let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
@@ -3062,16 +3019,16 @@ where
 
         self.t1_proto
         .send_apdu(&capdu, delay)
-        .map_err(|_| Se050Error::UnknownError)?;
+        ?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
         let rapdu = self.t1_proto
         .receive_apdu(&mut rapdu_buf, delay)
-        .map_err(|_| Se050Error::UnknownError)?;
+        ?;
 
         if rapdu.sw != 0x9000 {
         error!("SE050 read_secure_object Failed: {:x}", rapdu.sw);
-        return Err(Se050Error::UnknownError);
+        return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
         }
 
         Ok(())
@@ -3082,14 +3039,14 @@ where
     //###########################################################################
     // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
     #[inline(never)]
-    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
+    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
     fn read_secure_object(
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
-    ) -> Result<(), Se050Error> {
-        trace_now!("Se050 crate: SE050 read_secure_object DEBUG \n");
+        delay: &mut dyn DelayUs<u32>,
+    ) -> Result<usize, Se050Error> {
+        trace_now!("Se050 crate: SE050 read_secure_object DEBUG");
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -3104,22 +3061,19 @@ where
 
         capdu.push(tlv1);
 
-        trace_now!("Se050 crate: SE050 read_secure_object tlv1 push DEBUG \n");
+        trace_now!("Se050 crate: SE050 read_secure_object tlv1 push DEBUG");
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
-        let mut rapdu_buf: [u8; 260] = [0; 260];
+        let mut rapdu_buf: [u8; 400] = [0; 400];
 
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 read_secure_object Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
@@ -3127,7 +3081,12 @@ where
             Se050Error::UnknownError
         })?;
 
-        buf.copy_from_slice(tlv1_ret.data());
+        if tlv1_ret.data().len() > buf.len() {
+            trace_now!("Got too much data");
+            return Err(Se050Error::UnknownError);
+        }
+
+        buf[..tlv1_ret.data().len()].copy_from_slice(tlv1_ret.data());
 
         trace_now!("Se050 crate: SE050 read_secure_object buf : {:#?}\n", buf);
 
@@ -3143,7 +3102,7 @@ where
 
         trace_now!("Se050 crate:  SE050 read_secure_object OK \n ");
 
-        Ok(())
+        Ok(tlv1_ret.data().len())
     }
 
     //###########################################################################
@@ -3153,7 +3112,7 @@ where
         &mut self,
         objectidentifier: &[u8; 4],
         rsakeycomponent: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsakeycomponent);
@@ -3169,19 +3128,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 export_secure_object Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3206,7 +3162,7 @@ where
     fn read_type(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -3220,19 +3176,16 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 read_type Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3244,7 +3197,7 @@ where
     fn read_size(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -3258,19 +3211,16 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 read_size Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3282,7 +3232,7 @@ where
     fn read_id_list(
         &mut self,
         offset: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), offset);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xFF]);
@@ -3298,19 +3248,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 read_id_list Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3320,7 +3267,7 @@ where
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
     /*
        #[inline(never)]
-       fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
+       fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
        {
 
        let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
@@ -3337,16 +3284,16 @@ where
 
        self.t1_proto
        .send_apdu(&capdu, delay)
-       .map_err(|_| Se050Error::UnknownError)?;
+       ?;
 
        let mut rapdu_buf: [u8; 260] = [0; 260];
        let rapdu = self.t1_proto
        .receive_apdu(&mut rapdu_buf, delay)
-       .map_err(|_| Se050Error::UnknownError)?;
+       ?;
 
        if rapdu.sw != 0x9000 {
        error!("SE050 check_object_exists Failed: {:x}", rapdu.sw);
-       return Err(Se050Error::UnknownError);
+       return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
        }
 
        Ok(())
@@ -3358,7 +3305,7 @@ where
        //###########################################################################
         // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
         #[inline(never)]
-        fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>
+        fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>
         {
 
             //let mut buflen: [u8; 2] = [0, 0];
@@ -3383,17 +3330,17 @@ where
 
         self.t1_proto
         .send_apdu(&capdu, delay)
-        .map_err(|_| Se050Error::UnknownError)?;
+        ?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
 
         let rapdu = self.t1_proto
         .receive_apdu(&mut rapdu_buf, delay)
-        .map_err(|_| Se050Error::UnknownError)?;
+        ?;
 
         if rapdu.sw != 0x9000 {
         error!("SE050 check_object_exists_p256 Failed: {:x}", rapdu.sw);
-        return Err(Se050Error::UnknownError);
+        return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
         }
 
         let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
@@ -3432,7 +3379,7 @@ where
         //###########################################################################
         // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
         #[inline(never)]
-        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>
+        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>
         {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -3448,16 +3395,16 @@ where
 
         self.t1_proto
         .send_apdu(&capdu, delay)
-        .map_err(|_| Se050Error::UnknownError)?;
+        ?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
         let rapdu = self.t1_proto
         .receive_apdu(&mut rapdu_buf, delay)
-        .map_err(|_| Se050Error::UnknownError)?;
+        ?;
 
         if rapdu.sw != 0x9000 {
         error!("SE050 delete_secure_object Failed: {:x}", rapdu.sw);
-        return Err(Se050Error::UnknownError);
+        return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
         }
 
         Ok(())
@@ -3484,7 +3431,7 @@ where
     fn create_eccurve(
         &mut self,
         eccurve: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eccurve);
 
@@ -3498,19 +3445,16 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 create_eccurve Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3528,7 +3472,7 @@ where
         eccurve: &[u8],
         eccurveparam: &[u8],
         curveparametervalue: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eccurve);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eccurveparam);
@@ -3546,19 +3490,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 set_eccurve_param Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3572,7 +3513,7 @@ where
     fn get_eccurve_id(
         &mut self,
         identifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), identifier);
 
@@ -3586,19 +3527,16 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 get_eccurve_id Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3611,7 +3549,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn read_eccurve_list(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn read_eccurve_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
@@ -3620,19 +3558,16 @@ where
             Some(0x00),
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 read_eccurve_list Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3647,7 +3582,7 @@ where
     fn delete_eccurve(
         &mut self,
         eccurve: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eccurve);
 
@@ -3661,19 +3596,16 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 delete_eccurve Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3703,7 +3635,7 @@ where
         cryptoobjectidentifier: &[u8; 2],
         cryptocontext: &[u8],
         cryptoobjectsubtype: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), cryptoobjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptocontext);
@@ -3721,19 +3653,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 create_crypto_object Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3745,7 +3674,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn read_crypto_object_list(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn read_crypto_object_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
@@ -3754,19 +3683,16 @@ where
             Some(0x00),
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 read_crypto_object_list Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3783,7 +3709,7 @@ where
     fn delete_crypto_object(
         &mut self,
         cryptoobjectidentifier: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), cryptoobjectidentifier);
 
@@ -3797,19 +3723,16 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 read_crypto_object_list Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3847,7 +3770,7 @@ where
         eckeyidentifier: &[u8; 4],
         ecsignaturealgo: &[u8],
         inputdata: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ecsignaturealgo);
@@ -3865,19 +3788,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 ecdsa_sign Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3898,7 +3818,7 @@ where
         eckeyidentifier: &[u8; 4],
         edsignaturealgo: &[u8],
         inputdata: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), edsignaturealgo);
@@ -3916,19 +3836,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 eddsa_sign Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -3952,7 +3869,7 @@ where
         ecdaasignaturealgo: &[u8],
         hashedinputdata: &[u8; 32],
         randomdata: &[u8; 32],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ecdaasignaturealgo);
@@ -3972,19 +3889,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 ecdaa_sign Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4007,7 +3921,7 @@ where
         ecsignaturealgo: &[u8],
         hashedcomparedata: &[u8],
         asn1signaturedata: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ecsignaturealgo);
@@ -4027,19 +3941,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv5);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 ecdsa_verify Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4067,7 +3978,7 @@ where
         edsignaturealgo: &[u8],
         plaincomparedata: &[u8],
         signaturedata: &[u8; 64],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), edsignaturealgo);
@@ -4087,19 +3998,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv5);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 eddsa_verify Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4124,7 +4032,7 @@ where
         &mut self,
         eckeyidentifier: &[u8; 4],
         eckey: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), eckeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), eckey);
@@ -4140,19 +4048,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 ecdh_generate_shared_secret Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4188,7 +4093,7 @@ where
         rsakeyidentifier: &[u8; 4],
         rsasignaturealgo: &[u8],
         inputdata: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), rsakeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsasignaturealgo);
@@ -4206,19 +4111,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 rsa_sign Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4240,7 +4142,7 @@ where
         rsasignaturealgo: &[u8],
         datatobeverified: &[u8],
         asn1signature: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), rsakeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsasignaturealgo);
@@ -4260,19 +4162,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 rsa_verify Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4290,7 +4189,7 @@ where
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
         datatobeencrypted: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), rsakeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsaencryptionalgo);
@@ -4308,19 +4207,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 rsa_encrypt Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4338,7 +4234,7 @@ where
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
         datatobedecrypted: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), rsakeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), rsaencryptionalgo);
@@ -4356,19 +4252,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 rsa_decrypt Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4416,7 +4309,7 @@ where
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
         initializationvector: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyobjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
@@ -4434,19 +4327,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 cipher_init_encrypt Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4458,7 +4348,7 @@ where
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
         initializationvector: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyobjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
@@ -4476,19 +4366,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 cipher_init_encrypt Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4504,7 +4391,7 @@ where
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), inputdata);
@@ -4520,19 +4407,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 cipher_update Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4548,7 +4432,7 @@ where
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), inputdata);
@@ -4564,19 +4448,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 cipher_final Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4601,7 +4482,7 @@ where
         ciphermode: &[u8],
         inputdata: &[u8],
         initializationvector: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keybjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ciphermode); // 4.3.21 CipherMode Table 39. CipherMode constants
@@ -4621,19 +4502,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 cipher_one_shot_encrypt Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4646,7 +4524,7 @@ where
         ciphermode: &[u8],
         inputdata: &[u8],
         initializationvector: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keybjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), ciphermode); // 4.3.21 CipherMode Table 39. CipherMode constants
@@ -4665,19 +4543,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 cipher_one_shot_decrypt Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -4689,7 +4564,7 @@ where
         /* NOTE: hardcoded Object ID 0xae50ae50! */
         //4.12 Crypto operations AES/DES // 4.12.4 CipherOneShot // ENCRYPT P.87
         //  4.3.21 CipherMode // 4.3.21 CipherMode Table 39. CipherMode constants P.43
-        fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayMs<u32>, ) -> Result<(), Se050Error>
+        fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayUs<u32>, ) -> Result<(), Se050Error>
         {
             if data.len() > 240 || (data.len() % 16 != 0) {
                 error!("Input data too long or unaligned");
@@ -4714,16 +4589,16 @@ where
             capdu.push(tlv3);
             self.t1_proto
                 .send_apdu(&capdu, delay)
-                .map_err(|_| Se050Error::UnknownError)?;
+                ?;
 
             let mut rapdu_buf: [u8; 260] = [0; 260];
             let rapdu = self.t1_proto
                 .receive_apdu(&mut rapdu_buf, delay)
-                .map_err(|_| Se050Error::UnknownError)?;
+                ?;
 
             if rapdu.sw != 0x9000 {
                 //error!("SE050 EncryptAESOneshot {:x} Failed: {:x}",  cipher_mode, rapdu.sw);
-                //error!("SE050 EncryptAESOneshot   Failed: {:x}",  c  rapdu.sw);
+                //error!("SE050 EncryptStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  c  rapdu.sw);
                 error!("SE050 EncryptAESOneshot {:x?} Failed: {:x}",  cipher_mode, rapdu.sw);
 
                 return Err(Se050Error::UnknownError);
@@ -4759,7 +4634,7 @@ where
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         if data.len() > 240 || (data.len() % 16 != 0) {
             error!("Input data too long or unaligned");
@@ -4782,19 +4657,14 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
         capdu.push(tlv3);
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             //error!("SE050 DecryptAESOneshot {:x}, Failed: {:x}",  cipher_mode,rapdu.sw);
-            //error!("SE050 DecryptAESOneshot   Failed: {:x}",  rapdu.sw);
+            //error!("SE050 DecryptStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  rapdu.sw);
             error!(
                 "SE050 DecryptAESOneshot {:x?}, Failed: {:x}",
                 cipher_mode, rapdu.sw
@@ -4839,7 +4709,7 @@ where
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         if data.len() > 240 || (data.len() % 16 != 0) {
             error!("Input data too long or unaligned");
@@ -4864,19 +4734,14 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             //  error!("SE050 EncryptDESOneshot {:x} Failed: {:x}",  cipher_mode, rapdu.sw);
-            // error!("SE050 EncryptDESOneshot   Failed: {:x}",  rapdu.sw);
+            // error!("SE050 EncrypStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  rapdu.sw);
             error!(
                 "SE050 EncryptDESOneshot {:x?} Failed: {:x}",
                 cipher_mode, rapdu.sw
@@ -4912,7 +4777,7 @@ where
         cipher_mode: &[u8],
         data: &[u8],
         enc: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         if data.len() > 240 || (data.len() % 16 != 0) {
             error!("Input data too long or unaligned");
@@ -4935,19 +4800,14 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
         capdu.push(tlv3);
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             //error!("SE050 DecryptDESOneshot {:x}, Failed: {:x}",  cipher_mode,rapdu.sw);
-            // error!("SE050 DecryptDESOneshot  Failed: {:x}",   rapdu.sw);
+            // error!("SE050 DecrypStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))  Failed: {:x}",   rapdu.sw);
             error!(
                 "SE050 DecryptDESOneshot {:x?}, Failed: {:x}",
                 cipher_mode, rapdu.sw
@@ -5012,7 +4872,7 @@ where
         &mut self,
         mackeybjectidentifier: &[u8; 4],
         cryptobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), mackeybjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptobjectidentifier);
@@ -5028,19 +4888,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 mac_init Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5058,7 +4915,7 @@ where
         &mut self,
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), macdatainput);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptobjectidentifier);
@@ -5074,19 +4931,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 mac_update Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5107,7 +4961,7 @@ where
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
         mactovalidate: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), macdatainput);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptobjectidentifier);
@@ -5125,19 +4979,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 mac_final Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5163,7 +5014,7 @@ where
         macalgo: &[u8],
         datainputtomac: &[u8],
         mactoverify: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyobjectidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), macalgo);
@@ -5183,19 +5034,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv5);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 mac_one_shot Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5238,7 +5086,7 @@ where
         salt: &[u8; 64],
         info: &[u8; 64],
         requestedlength: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), hmackeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), digestmode);
@@ -5260,19 +5108,16 @@ where
         capdu.push(tlv4);
         capdu.push(tlv5);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 hkdf Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5301,7 +5146,7 @@ where
         salt: &[u8; 64],
         iterationcount: &[u8; 2],
         requestedlength: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), passwordidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), salt);
@@ -5321,19 +5166,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 pbkdf2derivekey Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5388,7 +5230,7 @@ where
         masterkeyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 4],
         divinput: &[u8; 31],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), masterkeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), diversifiedkeyidentifier);
@@ -5406,19 +5248,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050  dfdiversifykeyFailed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5440,7 +5279,7 @@ where
         &mut self,
         keyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 16],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), diversifiedkeyidentifier);
@@ -5456,19 +5295,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050  dfauthenticateFirstpart1 Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5488,7 +5324,7 @@ where
     fn dfauthenticatefirstpart2(
         &mut self,
         input: &[u8; 32],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), input);
 
@@ -5502,20 +5338,17 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050  dfauthenticateFirstpart2 Failed: {:x}", rapdu.sw);
 
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5535,7 +5368,7 @@ where
         &mut self,
         keyidentifier: &[u8; 4],
         encryptedcardchallenge: &[u8; 16],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), keyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), encryptedcardchallenge);
@@ -5551,20 +5384,17 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 dfauthenticatenonfirstpart1 Failed: {:x}", rapdu.sw);
 
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5585,7 +5415,7 @@ where
     fn dfauthenticatenonfirstpart2(
         &mut self,
         edata: &[u8; 16],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), edata);
 
@@ -5599,20 +5429,17 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 dfauthenticatenonfirstpart2 Failed: {:x}", rapdu.sw);
 
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5626,7 +5453,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5635,20 +5462,17 @@ where
             Some(0x2A),
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 dfdumpdsessionkeys Failed: {:x}", rapdu.sw);
 
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5686,7 +5510,7 @@ where
         setnumber: &[u8],
         desfirekeynumber: &[u8],
         keyversion: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), oldkey);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), newkey);
@@ -5708,20 +5532,17 @@ where
         capdu.push(tlv4);
         capdu.push(tlv5);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 dfchangekeypart1 Failed: {:x}", rapdu.sw);
 
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5741,7 +5562,7 @@ where
     fn dfchangekeypart2(
         &mut self,
         mac: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), mac);
 
@@ -5755,20 +5576,17 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 dfchangekeypart2 Failed: {:x}", rapdu.sw);
 
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5784,7 +5602,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn dfkillauthentication(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn dfkillauthentication(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5793,20 +5611,17 @@ where
             None,
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 dfkillauthentication Failed: {:x}", rapdu.sw);
 
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         Ok(())
@@ -5826,7 +5641,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn tls_generate_random(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn tls_generate_random(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5835,19 +5650,16 @@ where
             Some(0x24),
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 tls_generate_random  Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 tls_generate_random OK");
@@ -5882,7 +5694,7 @@ where
         keypairidentifier: &[u8; 4],
         hmackeyidentifier: &[u8; 4],
         inputdata: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), pskidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), keypairidentifier);
@@ -5902,19 +5714,14 @@ where
         capdu.push(tlv3);
         capdu.push(tlv4);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!(
-                "SE050 tls_calculate_pre_master_secret Failed: {:x}",
+                "SE050 tls_calculatStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)) Failed: {:x}",
                 rapdu.sw
             );
             return Err(Se050Error::UnknownError);
@@ -5963,7 +5770,7 @@ where
         label: &[u8; 64],
         random: &[u8; 32],
         requestlenght: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), hmackeyidentifier);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), digestmode);
@@ -5985,19 +5792,16 @@ where
         capdu.push(tlv4);
         capdu.push(tlv5);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 tls_perform_prf Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 tls_perform_prf OK");
@@ -6044,7 +5848,7 @@ where
         attestationobjectidentifier: &[u8],
         attestationalgo: &[u8],
         freshnessrandom: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), i2ccommand);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), attestationobjectidentifier);
@@ -6064,19 +5868,16 @@ where
         capdu.push(tlv3);
         capdu.push(tlv7);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 i2cm_execute_command_set Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 i2cm_execute_command_set OK");
@@ -6115,7 +5916,7 @@ where
     fn digest_init(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
 
@@ -6129,19 +5930,16 @@ where
 
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 digest_init Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 digest_init OK");
@@ -6162,7 +5960,7 @@ where
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), datatobehashed);
@@ -6178,19 +5976,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 digest_update Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 digest_update OK");
@@ -6211,7 +6006,7 @@ where
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), cryptoobjectidentifier);
         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), datatobehashed);
@@ -6227,19 +6022,16 @@ where
         capdu.push(tlv2);
         capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 digest_final Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 digest_final OK");
@@ -6260,7 +6052,7 @@ where
         &mut self,
         digestmode: &[u8],
         datatobehashed: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), digestmode);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), datatobehashed);
@@ -6276,19 +6068,16 @@ where
         capdu.push(tlv1);
         capdu.push(tlv2);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 digest_one_shotl Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 digest_one_shot OK");
@@ -6317,7 +6106,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn get_version(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn get_version(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6326,19 +6115,16 @@ where
             Some(0x0B),
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 get_version Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 get_version OK");
@@ -6352,7 +6138,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn get_timestamp(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn get_timestamp(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6361,19 +6147,16 @@ where
             Some(0x14),
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 get_timestamp Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 get_timestamp OK");
@@ -6396,7 +6179,7 @@ where
     fn get_free_memory(
         &mut self,
         memoryconstant: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), memoryconstant);
 
@@ -6410,19 +6193,16 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 get_free_memory Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 get_free_memory OK");
@@ -6447,7 +6227,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn delete_all(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error> {
+    fn delete_all(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             // Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6457,20 +6237,17 @@ where
             Some(0x00),
         );
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
 
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 delete_all Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("SE050 delete_all OK");
@@ -6485,7 +6262,7 @@ where
     //###########################################################################
         // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
         #[inline(never)]
-        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayMs<u32>) -> Result< (), Se050Error>
+        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>
         {
 
         trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  ");
@@ -6513,17 +6290,17 @@ where
 
         self.t1_proto
         .send_apdu(&capdu, delay)
-        .map_err(|_| Se050Error::UnknownError)?;
+        ?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
 
         let rapdu = self.t1_proto
         .receive_apdu(&mut rapdu_buf, delay)
-        .map_err(|_| Se050Error::UnknownError)?;
+        ?;
 
         if rapdu.sw != 0x9000 {
         error!("SE050 delete_secure_object Failed: {:x}", rapdu.sw);
-        return Err(Se050Error::UnknownError);
+        return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
         }
 
 
@@ -6541,7 +6318,7 @@ where
     /* ASSUMPTION: SE050 is provisioned with an instantiated P-256 curve object;
         see NXP AN12413 -> Secure Objects -> Default Configuration */
     /* NOTE: hardcoded Object ID 0xae51ae51! */
-    fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
+    fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
 
         trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
         //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x59, 0xae, 0x59]);
@@ -6575,16 +6352,16 @@ where
 
         self.t1_proto
             .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+            ?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
         let rapdu = self.t1_proto
             .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+            ?;
 
         if rapdu.sw != 0x9000 {
             error!("Se050 crate: SE050 GenP256 Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
         }
 
         trace_now!("Se050 crate: SE050 GenP256 OK");
@@ -6607,7 +6384,7 @@ where
     fn get_random(
         &mut self,
         buf: &mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let mut buflen: [u8; 2] = [0, 0];
         BE::write_u16(&mut buflen, buf.len() as u16);
@@ -6642,7 +6419,9 @@ where
 
         if rapdu.sw != 0x9000 {
             error!("Se050 crate: SE050 GetRandom Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
@@ -6656,8 +6435,6 @@ where
         }
 
         buf.copy_from_slice(tlv1_ret.data());
-
-        trace_now!("Se050 crate: buf {:#?}", buf);
 
         trace_now!("Se050 crate: SE050 GetRandom OK ");
 
@@ -6673,12 +6450,12 @@ where
     /* NOTE: hardcoded Object ID 0x20e8a001! &[0x20, 0xe8, 0xa0, 0x01]*/
 
     #[inline(never)]
-    //fn generate_p256_key(&mut self, delay: &mut dyn DelayMs<u32>) -> Result<ObjectId, Se050Error> {
+    //fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
 
     fn generate_p256_key(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<ObjectId, Se050Error> {
         trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
 
@@ -6706,20 +6483,17 @@ where
 
         trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv2");
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
 
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("Se050 crate: SE050 GenP256 Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("Se050 crate: SE050 GenP256 OK");
@@ -6742,7 +6516,7 @@ where
     fn generate_ed255_key_pair(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<ObjectId, Se050Error> {
         // let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa0, 0x02]);
         //  let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa1, 0x02]);
@@ -6770,20 +6544,17 @@ where
 
         trace_now!("Se050 crate: SE050 Gened255 DEBUG pushtlv2");
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
 
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("Se050 crate: Generation ED255 Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("Se050 crate: SE050 ED255 OK");
@@ -6797,9 +6568,9 @@ where
     fn delete_secure_object(
         &mut self,
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
-        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG\n ");
+        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG");
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -6812,23 +6583,22 @@ where
             None,
         );
 
-        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  tlv1 \n");
+        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  tlv1");
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
 
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  response ");
+
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 delete_secure_object Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         trace_now!("Se050 crate: SE050 delete secure object OK\n");
@@ -6843,9 +6613,9 @@ where
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
-        trace_now!("Se050 crate: SE050 check_object_exist DEBUG \n");
+        trace_now!("Se050 crate: SE050 check_object_exist DEBUG");
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
@@ -6860,20 +6630,17 @@ where
 
         capdu.push(tlv1);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 260] = [0; 260];
 
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 check_object_exists Failed: {:x}\n", rapdu.sw);
-            return Err(Se050Error::UnknownError);
+            return Err(Se050Error::Status(
+                rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
+            ));
         }
 
         let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
@@ -6916,12 +6683,12 @@ where
     //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey    P.58
     //P1_EC 4.3.19 ECCurve P.42
     #[inline(never)]
-    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayMs<u32>) -> Result<(), Se050Error>
+    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
     fn write_ec_key(
         &mut self,
         objectid: &[u8; 4],
         eccurve: &[u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         // let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
@@ -6948,20 +6715,15 @@ where
 
         //  capdu.push(tlv3);
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        self.t1_proto.send_apdu(&capdu, delay)?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
 
-        let rapdu = self
-            .t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            .map_err(|_| Se050Error::UnknownError)?;
+        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             //  error!("SE050 write_ec_key {:x} Failed: {:x}", eccurve, rapdu.sw);
-            //error!("SE050 write_ec_key   Failed: {:x}",  rapdu.sw);
+            //error!("SE050 write_eStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  rapdu.sw);
             error!("SE050 write_ec_key {:x?} Failed: {:x}", eccurve, rapdu.sw);
 
             return Err(Se050Error::UnknownError);

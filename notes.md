@@ -88,3 +88,9 @@ My assumption:
 Policy = concatenation of policysets
 Policyset = total length (1byte) || AuthObjId || AccessRuleHeader (bitflags) || Access Rule extension
 
+
+Writing stuff
+=============
+
+WriteBinary doesn't work for data longer than 255 bytes?
+TLV serialization!

@@ -90,7 +90,7 @@ dependencies = [
 [[package]]
 name = "iso7816"
 version = "0.1.1"
-source = "git+https://github.com/sosthene-nitrokey/iso7816.git?rev=f3725685b59fbdb49650f117496e0926fc74b11e#f3725685b59fbdb49650f117496e0926fc74b11e"
+source = "git+https://github.com/sosthene-nitrokey/iso7816.git?rev=55859038e0d29ea709b6401fbac6fd18632c2776#55859038e0d29ea709b6401fbac6fd18632c2776"
 dependencies = [
  "delog",
  "heapless",

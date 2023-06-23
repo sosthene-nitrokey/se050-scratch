@@ -1,6 +1,6 @@
 use crate::macros::enum_u8;
 use core::convert::{From, Into, TryFrom};
-use embedded_hal::blocking::delay::DelayMs;
+use embedded_hal::blocking::delay::DelayUs;
 
 // SE050 T1 mandates a single-byte LEN field, so IFS is strictly limited
 pub const MAX_IFSC: usize = 254;
@@ -13,6 +13,7 @@ pub const MAX_TLVS: usize = 8;
 
 //////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Iso7816Error {
     ValueError,
 }
@@ -58,10 +59,12 @@ pub struct SimpleTlv<'a> {
 
 impl<'a> SimpleTlv<'a> {
     pub fn new(tag: u8, data: &'a [u8]) -> Self {
-        let header = if data.len() < 128 {
+        let header = if data.len() <= 0x7F {
             heapless::Vec::from_slice(&[tag, data.len() as u8]).unwrap()
+        } else if data.len() <= u8::MAX as _ {
+            heapless::Vec::from_slice(&[tag, 0x81, data.len() as u8]).unwrap()
         } else {
-            let [l1, l2, ..] = data.len().to_be_bytes();
+            let [l1, l2] = (data.len() as u16).to_be_bytes();
             heapless::Vec::from_slice(&[tag, 0x82, l1, l2]).unwrap()
         };
         Self { tag, header, data }
@@ -305,6 +308,7 @@ pub const T1_S_RESPONSE_CODE: u8 = 0b1110_0000;
 pub const T1_R_CODE_MASK: u8 = 0b1110_1100;
 pub const T1_R_CODE: u8 = 0b1000_0000;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct T1Header {
     pub nad: u8,
     pub pcb: T1PCB,
@@ -312,7 +316,7 @@ pub struct T1Header {
     pub crc: u16,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum T1PCB {
     I(u8, bool),      // seq, multi
     S(T1SCode, bool), // code, response?
@@ -348,7 +352,7 @@ impl core::convert::From<T1PCB> for u8 {
                     }
                 }
             }
-            T1PCB::R(seq, err) => T1_R_CODE | (seq << 5) | err,
+            T1PCB::R(seq, err) => T1_R_CODE | (seq << 4) | err,
             T1PCB::S(code, false) => T1_S_REQUEST_CODE | <T1SCode as Into<u8>>::into(code),
             T1PCB::S(code, true) => T1_S_RESPONSE_CODE | <T1SCode as Into<u8>>::into(code),
         }
@@ -356,7 +360,7 @@ impl core::convert::From<T1PCB> for u8 {
 }
 
 enum_u8! {
-    #[derive(PartialEq, Eq)]
+    #[derive(PartialEq, Eq, Clone, Copy, Debug)]
     pub enum T1SCode {
         Resync = 0,
         Ifs = 1,
@@ -381,25 +385,25 @@ pub enum T1Error {
 }
 
 pub trait T1Proto {
-    fn send_apdu(&mut self, apdu: &CApdu, delay: &mut dyn DelayMs<u32>) -> Result<(), T1Error>;
+    fn send_apdu(&mut self, apdu: &CApdu, delay: &mut dyn DelayUs<u32>) -> Result<(), T1Error>;
     fn send_apdu_raw(
         &mut self,
         apdu: &RawCApdu,
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), T1Error>;
     fn receive_apdu_raw<'a>(
         &mut self,
         buf: &'a mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<RawRApdu<'a>, T1Error>;
     fn receive_apdu<'a>(
         &mut self,
         buf: &'a mut [u8],
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<RApdu<'a>, T1Error>;
     fn interface_soft_reset(
         &mut self,
-        delay: &mut dyn DelayMs<u32>,
+        delay: &mut dyn DelayUs<u32>,
     ) -> Result<AnswerToReset, T1Error>;
 }
 
