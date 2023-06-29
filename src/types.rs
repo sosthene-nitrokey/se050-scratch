@@ -85,11 +85,13 @@ impl<'a> SimpleTlv<'a> {
 
 //////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug)]
 pub struct RawRApdu<'a> {
     pub data: &'a [u8],
     pub sw: u16,
 }
 
+#[derive(Debug)]
 pub struct RApdu<'a> {
     pub tlvs: heapless::Vec<SimpleTlv<'a>, MAX_TLVS>,
     pub sw: u16,
@@ -450,3 +452,42 @@ pub type Se050CRC = crc16::State<crc16::X_25>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ObjectId(pub [u8; 4]);
+
+impl ObjectId {
+    /// An authentication object which allows the user to switch
+    /// LockState of the applet. The LockState defines whether the
+    /// applet is transport locked or not.
+    pub const TRANSPORT: ObjectId = ObjectId(0x7FFF0200u32.to_be_bytes());
+    /// A device unique NIST P-256 key pair rwhich contains SK.SE.ECKA
+    /// and PK.SE.ECKA in ECKey session context.
+    pub const KP_ECKEY_USER: ObjectId = ObjectId(0x7FFF0201u32.to_be_bytes());
+    /// A device unique NIST P-256 key pair which contains SK.SE.ECKA
+    /// and PK.SE.ECKA in ECKey session context; A constant card
+    /// challenge (all zeroes) is applicable.
+    pub const KP_ECKEY_IMPORT: ObjectId = ObjectId(0x7FFF0202u32.to_be_bytes());
+    // Reserved Key @ location 0x7FFF0203
+    /// An authentication object which allows the user to change the
+    /// applet variant.
+    pub const FEATURE: ObjectId = ObjectId(0x7FFF0204u32.to_be_bytes());
+    /// An authentication object which allows the user to delete all
+    /// objects, except trust provisioned by NXP objects.
+    pub const FACTORY_RESET: ObjectId = ObjectId(0x7FFF0205u32.to_be_bytes());
+    /// A BinaryFile Secure Object which holds the device unique
+    ///  ID. This file cannot be overwritten or deleted.
+    pub const UNIQUE_ID: ObjectId = ObjectId(0x7FFF0206u32.to_be_bytes());
+    /// An authentication object which allows the user to change the
+    /// platform SCP requirements, i.e. make platform SCP mandatory or
+    /// not, using SetPlatformSCPRequest. Mandatory means full security,
+    /// i.e. command & response MAC and encryption. Only SCP03 will be
+    /// sufficient.
+    pub const PLATFORM_SCP: ObjectId = ObjectId(0x7FFF0207u32.to_be_bytes());
+    /// An authentication object which grants access to the I2C master
+    /// feature. If the credential is not present, access to I2C master
+    /// is allowed in general. Otherwise, a session using this
+    /// credential shall be established and I2CM commands shall be sent
+    /// within this session.
+    pub const I2CM_ACCESS: ObjectId = ObjectId(0x7FFF0208u32.to_be_bytes());
+    /// An authentication object which grants access to the
+    /// SetLockState command
+    pub const RESTRICT: ObjectId = ObjectId(0x7FFF020Au32.to_be_bytes());
+}
