@@ -617,754 +617,6 @@ enum_u8! {
     }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-//trait-Se050Device ->  struct Se050
-pub trait Se050Device {
-    //OLD VERSION
-    fn enable(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-    //OLD VERSION
-    fn disable(&mut self, _delay: &mut dyn DelayUs<u32>);
-
-    //See AN12413, //  4.4 Applet selection P.47-48
-    /*
-    TO DO
-    */
-
-    //See AN12413,4.5 Session management
-
-    //See AN12413,4.5 Session management // 4.5.1 Generic session commands //4.5.1.1 CreateSession P.48
-    fn create_session(
-        &mut self,
-        authobjectidentifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,4.5 Session management // 4.5.1 Generic session commands //4.5.1.2 ExchangeSessionData P.49
-    fn exchange_session_data(
-        &mut self,
-        session_policies: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands /4.5.1.3 process_session_cmd P.49-50
-    fn process_session_cmd(
-        &mut self,
-        apducommand: &[u8],
-        session_id: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands //4.5.1.4 RefreshSession P.50
-    fn refresh_session(
-        &mut self,
-        policy: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands //4.5.1.4 RefreshSession P.50
-    fn close_session(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    //See AN12413 , 4.5 Session management //4.5.2 UserID session operations // 4.5.2.1 VerifySessionUserID P.51-52
-    fn verify_session_user_id(
-        &mut self,
-        user_idvalue: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 , 4.5.4 ECKey session operations //  4.5.4.1 ECKeySessionInternalAuthenticate P.52
-    fn eckey_session_internal_authenticate(
-        &mut self,
-        input_data: &[u8; 2],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 ,  4.5.4 ECKey session operations //   4.5.4.2 eckey_session_get_eckapublic_key P.53-54
-    fn eckey_session_get_eckapublic_key(
-        &mut self,
-        input_data: &[u8; 2],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 , 4.6 Module management
-
-    //See AN12413 , 4.6 Module management //   4.6.1 SetLockState P.54-55
-    fn set_lock_state(
-        &mut self,
-        lockindicator: &[u8],
-        lockstate: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 , 4.6 Module management //   4.6.2 SetPlatformSCPRequest P.55-56
-    fn set_platform_scp_request(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    //AN12413 // 4.6 Module management  //4.6.3 set_applet_features  P.56 -57
-    fn set_applet_features(
-        &mut self,
-        applet_config: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413,  4.7 Secure Object management
-
-    // See AN12413,  4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey //P1_EC ///P.58-59
-    // fn generate_eccurve_key(&mut self, eccurve: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error>; //ERWEITERT
-    //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>  ;
-    fn write_ec_key(
-        &mut self,
-        objectid: &[u8; 4],
-        eccurve: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-    //OLD VERSION
-    // fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> ;
-    //DEFAULT CONFIGURATION OF SE050
-
-    //NEW VERSION
-    // fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],  private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> ;
-    fn generate_p256_key(
-        &mut self,
-        objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<ObjectId, Se050Error>;
-
-    // fn generate_ed255_key_pair(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error>;
-
-    fn generate_ed255_key_pair(
-        &mut self,
-        objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<ObjectId, Se050Error>;
-
-    //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject// 4.7.1.2 WriteRSAKey //P.59-60
-    fn write_rsa_key(
-        &mut self,
-        policy: &[u8],
-        objectid: &[u8; 4],
-        keysize: &[u8; 2],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey //AES key, DES key or HMAC key // P 60/ P.61
-
-    //OLD VERSION
-    fn write_aes_key(&mut self, key: &[u8], delay: &mut dyn DelayUs<u32>)
-        -> Result<(), Se050Error>;
-
-    //NEW VERSION
-    //  fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    fn generate_aes_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error>;
-
-    fn write_des_key(
-        &mut self,
-        policy: &[u8],
-        objectid: &[u8; 4],
-        kekid: &[u8; 4],
-        key: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    fn write_hmac_key(
-        &mut self,
-        policy: &[u8],
-        objectid: &[u8; 4],
-        kekid: &[u8; 4],
-        key: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.4 WriteBinary  //P.61
-    fn write_binary(
-        &mut self,
-        policy: &[u8],
-        objectid: &[u8; 4],
-        file_offset: &[u8; 2],
-        file_length: &[u8; 2],
-        data1: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject P.57 //4.7.1.5 write_user_id  //P.62
-    fn write_user_id(
-        &mut self,
-        policy: &[u8],
-        objectid: &[u8; 4],
-        user_identifier_value: &[u8; 16],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.6 WriteCounter  //P.62
-    fn write_counter(
-        &mut self,
-        policy: &[u8],
-        counterid: &[u8; 4],
-        countersize: &[u8; 2],
-        counterfile: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject // 4.7.1.7 WritePCR  P.63
-    fn write_pcr(
-        &mut self,
-        policy: &[u8],
-        pcrid: &[u8; 4],
-        initial_hash_value: &[u8],
-        ext: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.7 Secure Object management // 4.7.1.8  ImportObject P.63-64
-
-    fn import_object(
-        &mut self,
-        identifier: &[u8; 4],
-        rsakeycomponent: &[u8],
-        serializedobjectencrypted: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject // 4.7.1.7 WritePCR  P.64
-    fn import_external_object(
-        &mut self,
-        authdata: &[u8],
-        hostpublickeyidentifier: &[u8],
-        writesecureobjectcommand: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
-    //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    fn read_secure_object(
-        &mut self,
-        buf: &mut [u8],
-        objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<usize, Se050Error>;
-
-    // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.2 ExportObject // P.67
-    fn export_secure_object(
-        &mut self,
-        objectidentifier: &[u8; 4],
-        rsakeycomponent: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.1 ReadType P.67-68
-    fn read_type(
-        &mut self,
-        objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject 4.7.4.2 ReadSize P.68
-    fn read_size(
-        &mut self,
-        objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.3 ReadIDList P.69
-    fn read_id_list(
-        &mut self,
-        offset: &[u8; 2],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
-    //  fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    fn check_object_exists(
-        &mut self,
-        buf: &mut [u8],
-        objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>;
-
-    // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
-    fn delete_secure_object(
-        &mut self,
-        objectidentifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413//   4.8 EC curve management
-
-    // See AN12413//   4.8 EC curve management // 4.8.1 CreateECCurve -Create an EC curve listed in ECCurve P.71-72
-    fn create_eccurve(
-        &mut self,
-        eccurve: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413//   4.8 EC curve management //  4.8.2 SetECCurveParam -Set a curve parameter. The curve must have been created first by CreateEcCurve. P.72
-    fn set_eccurve_param(
-        &mut self,
-        eccurve: &[u8],
-        eccurveptaram: &[u8],
-        curveparametervalue: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413//   4.8 EC curve management //  4.8.3 GetECCurveID Get the curve associated with an EC key.. P.72-73
-    fn get_eccurve_id(
-        &mut self,
-        identifier: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413//   4.8 EC curve management //  4.8.3 GetECCurveID Get the curve associated with an EC key.. P.73
-    fn read_eccurve_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    // See AN12413//   4.8 EC curve management // 4.8.5 DeleteECCurve - Deletes an EC curve P.74
-    fn delete_eccurve(
-        &mut self,
-        eccurve: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413// 4.9 Crypto Object management
-
-    // See AN12413// 4.9 Crypto Object management // 4.9.1 CreateCryptoObject - Creates a Crypto Object on the SE050. P74-75
-    fn create_crypto_object(
-        &mut self,
-        cryptoobjectidentifier: &[u8; 2],
-        cryptocontext: &[u8],
-        cryptoobjectsubtype: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413// 4.9 Crypto Object management // 4.9.2 ReadCryptoObjectList. P.75
-    fn read_crypto_object_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    // See AN12413// 4.9 Crypto Object management // 4.9.3 DeleteCryptoObject P.75 - 76
-    fn delete_crypto_object(
-        &mut self,
-        cryptoobjectidentifier: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.10 Crypto operations EC // 4.10.1 Signature generation // 4.10.1.1 ECDSASign P.76-77
-    fn ecdsa_sign(
-        &mut self,
-        eckeyidentifier: &[u8; 4],
-        ecsignaturealgo: &[u8],
-        inputdata: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.10 Crypto operations EC
-    //fff
-    // See AN12413 // 4.10 Crypto operations EC // 4.10.1 Signature generation // 4.10.1.2 EdDSASign P.77
-    fn eddsa_sign(
-        &mut self,
-        eckeyidentifier: &[u8; 4],
-        edsignaturealgo: &[u8],
-        inputdata: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.10 Crypto operations EC // 4.10.1 Signature generation // 4.10.1.3 ECDAASign P.78
-    fn ecdaa_sign(
-        &mut self,
-        eckeyidentifier: &[u8; 4],
-        ecdaasignaturealgo: &[u8],
-        hashedinputdata: &[u8; 32],
-        randomdata: &[u8; 32],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.10 Crypto operations EC // 4.10.2 Signature verification // 4.10.2.1 ECDSAVerify P.79
-    fn ecdsa_verify(
-        &mut self,
-        eckeyidentifier: &[u8; 4],
-        ecsignaturealgo: &[u8],
-        hashedcomparedata: &[u8],
-        asn1signaturedata: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.10 Crypto operations EC // 4.10.2 Signature verification // 4.10.2.2 EdDSAVerify P.80
-    fn eddsa_verify(
-        &mut self,
-        eckeyidentifier: &[u8; 4],
-        edsignaturealgo: &[u8],
-        plaincomparedata: &[u8],
-        signaturedata: &[u8; 64],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.10 Crypto operations EC //  4.10.3 Shared secret generation //  4.10.3.1 ECDHGenerateSharedSecret P.81
-    fn ecdh_generate_shared_secret(
-        &mut self,
-        eckeyidentifier: &[u8; 4],
-        eckey: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.11 Crypto operations RSA
-
-    // See AN12413 // 4.11 Crypto operations RSA // 4.11.1 Signature Generation //4.11.1.1 RSASign P.82
-    fn rsa_sign(
-        &mut self,
-        rsakeyidentifier: &[u8; 4],
-        rsasignaturealgo: &[u8],
-        inputdata: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.11 Crypto operations RSA // 4.11.2 Signature Verification  //4.11.2.1 RSAVerify P.82-83
-    fn rsa_verify(
-        &mut self,
-        rsakeyidentifier: &[u8; 4],
-        rsasignaturealgo: &[u8],
-        datatobeverified: &[u8],
-        asn1signature: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.11 Crypto operations RSA // 4.11.3 Encryption // 4.11.3.1 RSAEncrypt P.83-84
-    fn rsa_encrypt(
-        &mut self,
-        rsakeyidentifier: &[u8; 4],
-        rsaencryptionalgo: &[u8],
-        datatobeencrypted: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413 // 4.11 Crypto operations RSA // 4.11.3 Encryption // 4.11.3.2 RSADecrypt P.84
-    fn rsa_decrypt(
-        &mut self,
-        rsakeyidentifier: &[u8; 4],
-        rsaencryptionalgo: &[u8],
-        datatobedecrypted: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.12 Crypto operations AES/DES
-
-    //See AN12413 //4.12 Crypto operations AES/DES //4.12.1 CipherInit P.84-85
-    fn cipher_init_encrypt(
-        &mut self,
-        keyobjectidentifier: &[u8; 4],
-        cryptoobjectidentifier: &[u8; 2],
-        initializationvector: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-    fn cipher_init_decrypt(
-        &mut self,
-        keyobjectidentifier: &[u8; 4],
-        cryptoobjectidentifier: &[u8; 2],
-        initializationvector: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.12 Crypto operations AES/DES //4.12.2 CipherUpdate P.85-86
-    fn cipher_update(
-        &mut self,
-        cryptoobjectidentifier: &[u8; 2],
-        inputdata: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.12 Crypto operations AES/DES //4.12.3 CipherFinal P.86-87
-    fn cipher_final(
-        &mut self,
-        cryptoobjectidentifier: &[u8; 2],
-        inputdata: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.12 Crypto operations AES/DES //4.12.4 CipherOneShot P.87
-    fn cipher_one_shot_encrypt(
-        &mut self,
-        keybjectidentifier: &[u8; 4],
-        ciphermode: &[u8],
-        inputdata: &[u8],
-        initializationvector: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-    fn cipher_one_shot_decrypt(
-        &mut self,
-        keybjectidentifier: &[u8; 4],
-        ciphermode: &[u8],
-        inputdata: &[u8],
-        initializationvector: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //4.12 Crypto operations AES/DES  //4.12.4 CipherOneShot - Encrypt or decrypt data in one shot mode //P.87
-    /*
-    //OLD VERSION
-        fn encrypt_aes_oneshot(
-            &mut self,
-            data: &[u8],
-            enc: &mut [u8],
-            delay: &mut dyn DelayUs<u32>,
-        ) -> Result<(), Se050Error>;
-    */
-    //OLD VERSION
-    fn encrypt_aes_oneshot(
-        &mut self,
-        data: &[u8],
-        enc: &mut [u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //NEW VERSION
-    //fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayUs<u32>, ) -> Result<(), Se050Error> ;
-    fn decrypt_aes_oneshot(
-        &mut self,
-        objectid: &[u8; 4],
-        cipher_mode: &[u8],
-        data: &[u8],
-        enc: &mut [u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    fn encrypt_des_oneshot(
-        &mut self,
-        objectid: &[u8; 4],
-        cipher_mode: &[u8],
-        data: &[u8],
-        enc: &mut [u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-    fn decrypt_des_oneshot(
-        &mut self,
-        objectid: &[u8; 4],
-        cipher_mode: &[u8],
-        data: &[u8],
-        enc: &mut [u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.13 Message Authentication Codes
-
-    //See AN12413 //4.13 Message Authentication Codes //4.13.1 MACInit P.87-88
-    fn mac_init(
-        &mut self,
-        mackeybjectidentifier: &[u8; 4],
-        cryptobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.13 Message Authentication Codes //4.13.1 MACInit P.87-88
-    fn mac_update(
-        &mut self,
-        macdatainput: &[u8],
-        cryptobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.13 Message Authentication Codes //4.13.3 MACFinal P.89
-    fn mac_final(
-        &mut self,
-        macdatainput: &[u8],
-        cryptobjectidentifier: &[u8; 2],
-        mactovalidate: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.13 Message Authentication Codes //4.13.4 MACOneShot P.90
-    fn mac_one_shot(
-        &mut self,
-        keyobjectidentifier: &[u8; 4],
-        macalgo: &[u8],
-        datainputtomac: &[u8],
-        mactoverify: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.14 Key Derivation Functions
-
-    //See AN12413 //4.14 Key Derivation Functions //4.14.1 HKDF P.90-91
-    fn hkdf(
-        &mut self,
-        hmackeyidentifier: &[u8; 4],
-        digestmode: &[u8],
-        salt: &[u8; 64],
-        info: &[u8; 64],
-        requestedlength: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413 //4.14 Key Derivation Functions //4.14.2 PBKDF2 P.91-92
-    fn pbkdf2derivekey(
-        &mut self,
-        passwordidentifier: &[u8; 4],
-        salt: &[u8; 64],
-        iterationcount: &[u8; 2],
-        requestedlength: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.1 DFDiversifyKey P92-95
-    fn dfdiversifykey(
-        &mut self,
-        masterkeyidentifier: &[u8; 4],
-        diversifiedkeyidentifier: &[u8; 4],
-        divinput: &[u8; 31],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.2 DFAuthenticateFirst  //4.15.2.1 DFAuthenticateFirstPart1 // P.95-96
-    fn dfauthenticatefirstpart1(
-        &mut self,
-        keyidentifier: &[u8; 4],
-        diversifiedkeyidentifier: &[u8; 16],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.2 DFAuthenticateFirst  //4.15.2.2 DFAuthenticateFirstPart2 // P.95-96
-    fn dfauthenticatefirstpart2(
-        &mut self,
-        input: &[u8; 32],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.3.1 DFAuthenticateNonFirstPart1// P.96-97
-    fn dfauthenticatenonfirstpart1(
-        &mut self,
-        keyidentifier: &[u8; 4],
-        encryptedcardchallenge: &[u8; 16],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.3.2 DFAuthenticateNonFirstPart2// P.97
-    fn dfauthenticatenonfirstpart2(
-        &mut self,
-        edata: &[u8; 16],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.3 DFAuthenticateNonFirst  //4.15.4 DFDumpSessionKeys// P.97-98
-    fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.5 DFChangeKey// 4.15.5.1 DFChangeKeyPart1 P.98-99
-    fn dfchangekeypart1(
-        &mut self,
-        oldkey: &[u8; 4],
-        newkey: &[u8; 4],
-        setnumber: &[u8],
-        desfirekeynumber: &[u8],
-        keyversion: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.5 DFChangeKey// 4.15.5.2 DFChangeKeyPart2 P.99
-    fn dfchangekeypart2(
-        &mut self,
-        mac: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413,// 4.15 MIFARE DESFire support //4.15.6 DFKillAuthentication  P.99-100
-    fn dfkillauthentication(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    //See AN12413, //4.16 TLS handshake support
-
-    //See AN12413, //4.16 TLS handshake support //  4.16.1 TLSGenerateRandom P.100
-    fn tls_generate_random(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    //See AN12413, //4.16 TLS handshake support //  4.16.2 TLSCalculatePreMasterSecret P.101
-    fn tls_calculate_pre_master_secret(
-        &mut self,
-        pskidentifier: &[u8; 4],
-        keypairidentifier: &[u8; 4],
-        hmackeyidentifier: &[u8; 4],
-        inputdata: &[u8; 4],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413, //4.16 TLS handshake support //  4.16.3 TLSPerformPRF P.101-102
-    fn tls_perform_prf(
-        &mut self,
-        hmackeyidentifier: &[u8; 4],
-        digestmode: &[u8],
-        label: &[u8; 64],
-        random: &[u8; 32],
-        requestlenght: &[u8; 2],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413, //4.17 I2C controller support
-
-    //See AN12413, //4.17 I2C controller support //4.17.1 I2CM_ExecuteCommandSet //P.103-106
-    fn i2cm_execute_command_set(
-        &mut self,
-        i2ccommand: &[u8],
-        attestationobjectidentifier: &[u8],
-        attestationalgo: &[u8],
-        freshnessrandom: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413, //4.18 Digest operations
-
-    //AN12413, //4.18 Digest operations 4.18.1 DigestInit // P.106
-    fn digest_init(
-        &mut self,
-        cryptoobjectidentifier: &[u8; 2],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //AN12413, //4.18 Digest operations //4.18.2 DigestUpdate // P.106-107
-    fn digest_update(
-        &mut self,
-        cryptoobjectidentifier: &[u8; 2],
-        datatobehashed: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //AN12413, //4.18 Digest operations //4.18.3 DigestFinal // P. 107-108
-    fn digest_final(
-        &mut self,
-        cryptoobjectidentifier: &[u8; 2],
-        datatobehashed: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //AN12413, //4.18 Digest operations //4.18.3 DigestFinal // P. 107-108
-    fn digest_one_shot(
-        &mut self,
-        digestmode: &[u8],
-        datatobehashed: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //See AN12413, // 4.19 Generic management commands
-
-    //AN12413, // 4.19 Generic management commands //4.19.1 GetVersion  P.108 -109
-    fn get_version(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    //AN12413, // 4.19 Generic management commands //4.19.2 get_timestamp P.109
-    fn get_timestamp(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-
-    //AN12413, // 4.19 Generic management commands //4.19.2 GetTimestamp P.109
-    fn get_free_memory(
-        &mut self,
-        memoryconstant: &[u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    // See AN12413, //4.19 Generic management commands // P110-11
-    //OLD VERSION
-    fn get_random(
-        &mut self,
-        buf: &mut [u8],
-        delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error>;
-
-    //AN12413, // 4.19 Generic management commands //44.19.5 delete_all P.112
-    fn delete_all(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>;
-}
-
 //struct Se050AppInfo ->no further Implementation 20221026
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -1395,14 +647,14 @@ where
     }
 }
 //impl- > for struct SE050 ->functions
-impl<T> Se050Device for Se050<T>
+impl<T> Se050<T>
 where
     T: T1Proto,
 {
     //###########################################################################
     //###########################################################################
     //OLD VERSION
-    fn enable(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn enable(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         /* Step 1: perform interface soft reset, parse ATR */
         let r = self.t1_proto.interface_soft_reset(delay);
         if r.is_err() {
@@ -1455,7 +707,7 @@ where
     //###########################################################################
     //TO-DO
 
-    fn disable(&mut self, _delay: &mut dyn DelayUs<u32>) {
+    pub fn disable(&mut self, _delay: &mut dyn DelayUs<u32>) {
         // send S:EndApduSession
         // receive ACK
         // power down
@@ -1491,16 +743,17 @@ where
     // authentication object identifier -> authobjectidentifier
 
     #[inline(never)]
-    fn create_session(
+    pub fn create_session(
         &mut self,
         authobjectidentifier: &[u8; 4],
+        buf: &mut [u8; 8],
         delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), authobjectidentifier);
 
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
-            Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
+            Into::<u8>::into(Se050ApduInstruction::Mgmt), //| APDU_INSTRUCTION_TRANSIENT,
             Se050ApduP1CredType::Default.into(),
             Se050ApduP2::SessionCreate.into(),
             Some(0x0C),
@@ -1511,6 +764,7 @@ where
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
         let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
+        error!("Rapdu: {:x?}", rapdu);
 
         if rapdu.sw != 0x9000 {
             error!("SE050 create_session Failed: {:x}", rapdu.sw);
@@ -1518,6 +772,18 @@ where
                 rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported),
             ));
         }
+
+        let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
+            error!("Se050 crate: SE050 GetRandom Return TLV Missing");
+            Se050Error::UnknownError
+        })?;
+
+        if tlv1_ret.data().len() != buf.len() {
+            error!("Se050 crate: SE050 GetRandom Length Mismatch");
+            return Err(Se050Error::UnknownError);
+        }
+
+        buf.copy_from_slice(tlv1_ret.data());
 
         trace_now!("SE050 create_session OK");
         Ok(())
@@ -1529,7 +795,7 @@ where
     // Session policies ->session_policies
 
     #[inline(never)]
-    fn exchange_session_data(
+    pub fn exchange_session_data(
         &mut self,
         session_policies: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -1567,7 +833,7 @@ where
     //Note that the applet does not check the validity of the CLA byte of the TLV[TAG_1] payload.
 
     #[inline(never)]
-    fn process_session_cmd(
+    pub fn process_session_cmd(
         &mut self,
         apducommand: &[u8],
         session_id: &[u8],
@@ -1607,7 +873,7 @@ where
     //See AN12413 , 4.5 Session management // 4.5.1 Generic session commands //4.5.1.4 refresh_session P.50
 
     #[inline(never)]
-    fn refresh_session(
+    pub fn refresh_session(
         &mut self,
         policy: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -1648,7 +914,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn close_session(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn close_session(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -1678,7 +944,7 @@ where
     //See AN12413 , 4.5 Session management //4.5.2 UserID session operations // 4.5.2.1 VerifySessionUserID P.51-52
 
     #[inline(never)]
-    fn verify_session_user_id(
+    pub fn verify_session_user_id(
         &mut self,
         user_idvalue: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -1759,7 +1025,7 @@ where
     //InstructECKSIA = 0x88
 
     #[inline(never)]
-    fn eckey_session_internal_authenticate(
+    pub fn eckey_session_internal_authenticate(
         &mut self,
         input_data: &[u8; 2],
         delay: &mut dyn DelayUs<u32>,
@@ -1804,7 +1070,7 @@ where
 
     #[inline(never)]
 
-    fn eckey_session_get_eckapublic_key(
+    pub fn eckey_session_get_eckapublic_key(
         &mut self,
         input_data: &[u8; 2],
         delay: &mut dyn DelayUs<u32>,
@@ -1862,7 +1128,7 @@ where
     */
 
     #[inline(never)]
-    fn set_lock_state(
+    pub fn set_lock_state(
         &mut self,
         lockindicator: &[u8],
         lockstate: &[u8],
@@ -1917,7 +1183,10 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn set_platform_scp_request(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn set_platform_scp_request(
+        &mut self,
+        delay: &mut dyn DelayUs<u32>,
+    ) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -1949,7 +1218,7 @@ where
     //The 2-byte input value is a pre-defined AppletConfig value.
 
     #[inline(never)]
-    fn set_applet_features(
+    pub fn set_applet_features(
         &mut self,
         applet_config: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -1998,284 +1267,6 @@ where
     */
 
     //###########################################################################
-    /*
-    #[inline(never)]
-    /* ASSUMPTION: SE050 is provisioned with an instantiated ECC curve object; */
-            /* NOTE: hardcoded Object ID 0xae51ae51! */
-
-
-    //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey    P.58
-    //P1_EC 4.3.19 ECCurve P.42
-    fn generate_eccurve_key(&mut self,  eccurve: &[u8],delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
-        let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
-        let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &eccurve );	// Se050ECCurveconstants
-        let mut capdu = CApdu::new(
-            ApduClass::ProprietaryPlain,
-            Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
-            Se050ApduP1CredType::EC | Se050ApduP1KeyType::KeyPair,
-            Se050ApduP2::Default.into(),
-            None
-        );
-        capdu.push(tlv1);
-        capdu.push(tlv2);
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            ?;
-
-        let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self.t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            ?;
-
-        if rapdu.sw != 0x9000 {
-            error!("SE050 GenECCurve {:x} Failed: {:x}", eccurve, rapdu.sw);
-            return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-        }
-
-        trace_now!("SE050 GenEccurve {:x} : OK",eccurve);
-        Ok(ObjectId([0xae, 0x51, 0xae, 0x51]))
-    }
-    */
-
-    //###########################################################################
-    /* ASSUMPTION: SE050 is provisioned with an instantiated ECC curve object; */
-    /* NOTE: hardcoded Object ID 0xae51ae51! */
-    //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey    P.58
-    //P1_EC 4.3.19 ECCurve P.42
-    /*
-     #[inline(never)]
-     fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
-
-     {
-         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
-         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
-         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), & eccurve);	// Se050ECCurveconstants
-         let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), &private_key_value );
-
-         let mut capdu = CApdu::new(
-             ApduClass::ProprietaryPlain,
-             Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
-             Se050ApduP1CredType::EC | Se050ApduP1KeyType::KeyPair,
-             Se050ApduP2::Default.into(),
-             None
-         );
-
-         capdu.push(tlvp);
-         capdu.push(tlv1);
-         capdu.push(tlv2);
-         capdu.push(tlv3);
-
-         self.t1_proto
-             .send_apdu(&capdu, delay)
-             ?;
-
-         let mut rapdu_buf: [u8; 16] = [0; 16];
-         let rapdu = self.t1_proto
-             .receive_apdu(&mut rapdu_buf, delay)
-             ?;
-
-         if rapdu.sw != 0x9000 {
-           //  error!("SE050 write_ec_key {:x} Failed: {:x}", eccurve, rapdu.sw);
-           //error!("SE050 write_ec_Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  rapdu.sw);
-             error!("SE050 write_ec_key {:x?} Failed: {:x}", eccurve, rapdu.sw);
-
-             return Err(Se050Error::UnknownError);
-         }
-
-         //trace_now!("SE050 write_ec_key {:x} : OK",eccurve);
-
-         //trace_now!("SE050 write_ec_key   : OK" );
-         trace_now!("SE050 write_ec_key {:x?} : OK",eccurve);
-
-         Ok(())
-     }
-
-    */
-    //###########################################################################
-    //OLD VERSION
-    // #[inline(never)]
-    /* ASSUMPTION: SE050 is provisioned with an instantiated P-256 curve object;
-    see NXP AN12413 -> Secure Objects -> Default Configuration */
-    /* NOTE: hardcoded Object ID 0xae51ae51! */
-    //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey   P.58
-    //P1_EC //  4.3.19 ECCurve NIST_P256 P.42
-
-    //20E8A001
-    //&[0x20, 0xE8, 0xA0, 0x01]
-    /*
-        fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
-            //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
-           //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
-         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(),   &[ 0x01, 0xA0, 0xE8,  0x20 ] );
-          // let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[ 0x21, 0xa0,  0xe8, 0x20] );
-           //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x51, 0xae, 0x51]);
-            let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0x03]);	// NIST P-256
-            let mut capdu = CApdu::new(
-                ApduClass::ProprietaryPlain,
-                Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
-                Se050ApduP1CredType::EC | Se050ApduP1KeyType::KeyPair,
-                Se050ApduP2::Default.into(),
-                None
-            );
-            capdu.push(tlv1);
-
-            capdu.push(tlv2);
-
-            self.t1_proto
-                .send_apdu(&capdu, delay)
-                ?;
-
-             let mut rapdu_buf: [u8; 16] = [0; 16];
-
-          // let mut rapdu_buf: [u8; 260] = [0; 260];
-
-            let rapdu = self.t1_proto
-                .receive_apdu(&mut rapdu_buf, delay)
-                ?;
-
-            if rapdu.sw != 0x9000 {
-                error!("SE050 GenP256 Failed: {:x}", rapdu.sw);
-                return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-            }
-
-
-          //
-           // Ok(ObjectId([0x21, 0xa0,  0xe8, 0x20]))
-           trace_now!("SE050 GenP256 OK");
-            Ok(ObjectId([0x20, 0xE8, 0xA0, 0x01]))
-
-        }
-
-    */
-    //###########################################################################
-    /* ASSUMPTION: SE050 is provisioned with an instantiated ECC curve object; */
-
-    //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey    P.58
-    //P1_EC 4.3.19 ECCurve P.42
-
-    /* NOTE: hardcoded Object ID 0xae51ae51! */
-    //  &[0xae, 0x51, 0xae, 0x51]
-    //20E8A002
-    //&[0x20, 0xE8, 0xA0, 0x02]
-
-    /*
-
-        #[inline(never)]
-        //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
-        fn generate_ed255_key_pair(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
-        {
-          //  let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
-
-         //   let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
-           // let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(),&[0xae, 0x52, 0xae, 0x52]);
-         //   let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(),&[ 0x22, 0xa0, 0xe8, 0x20]);
-            let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(),   &[ 0x02, 0xA0, 0xE8,  0x20 ] );
-
-
-           // let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), & eccurve);	// Se050ECCurveconstants
-            //let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &ID_ECC_ED_25519  );	// Se050ECCurveconstants
-            let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0x40]  );	// Se050ECCurveconstants
-            //let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), &private_key_value );
-
-            let mut capdu = CApdu::new(
-                ApduClass::ProprietaryPlain,
-                Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
-                Se050ApduP1CredType::EC | Se050ApduP1KeyType::KeyPair,
-                Se050ApduP2::Default.into(),
-                None
-            );
-    //  capdu.push(tlvp);
-            capdu.push(tlv1);
-            capdu.push(tlv2);
-       //     capdu.push(tlv3);
-
-            self.t1_proto
-                .send_apdu(&capdu, delay)
-                ?;
-
-            let mut rapdu_buf: [u8; 16] = [0; 16];
-           // let mut rapdu_buf: [u8; 260] = [0; 260];
-
-            let rapdu = self.t1_proto
-                .receive_apdu(&mut rapdu_buf, delay)
-                ?;
-
-            if rapdu.sw != 0x9000 {
-              //  error!("SE050 write_ec_key {:x} Failed: {:x}", eccurve, rapdu.sw);
-              //error!("SE050 write_ec_Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  rapdu.sw);
-               // error!("SE050 generate_ed255_key_pair {:x?} Failed: {:x}", eccurve, rapdu.sw);
-
-                error!("SE050 generate_ed255_key_pair   Failed: {:x}", rapdu.sw);
-
-                return Err(Se050Error::UnknownError);
-            }
-
-            //trace_now!("SE050 write_ec_key {:x} : OK",eccurve);
-
-            //trace_now!("SE050 write_ec_key   : OK" );
-           // trace_now!("SE050 generate_ed255_key_pair {:x?} : OK",eccurve);
-          // Ok(())
-
-
-            trace_now!("SE050 generate_ed255_key_pair OK");
-            //Ok(ObjectId([0xae, 0x52, 0xae, 0x52]))
-            //Ok(ObjectId([0x22, 0xa0, 0xe8, 0x20]))
-            Ok(ObjectId([0x20, 0xE8, 0xA0, 0x02]))
-        }
-    }
-
-
-
-    */
-
-    //###########################################################################
-    /* ASSUMPTION: SE050 is provisioned with an instantiated P-256 curve object;
-    see NXP AN12413 -> Secure Objects -> Default Configuration */
-    //NEW VERSION
-    //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.1 WriteECKey   P.58
-    //P1_EC //  4.3.19 ECCurve NIST_P256 P.42
-    /*    #[inline(never)]
-
-       fn generate_p256_key(&mut self,policy: &[u8],  objectid: &[u8;4],   private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
-       {
-
-           let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
-           let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
-           let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0x03]);	// NIST P-256
-           let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), &private_key_value );
-
-           let mut capdu = CApdu::new(
-               ApduClass::ProprietaryPlain,
-               Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
-               Se050ApduP1CredType::EC | Se050ApduP1KeyType::KeyPair,
-               Se050ApduP2::Default.into(),
-               None
-           );
-
-           capdu.push(tlvp);
-           capdu.push(tlv1);
-           capdu.push(tlv2);
-           capdu.push(tlv3);
-
-           self.t1_proto
-               .send_apdu(&capdu, delay)
-               ?;
-
-           let mut rapdu_buf: [u8; 16] = [0; 16];
-           let rapdu = self.t1_proto
-               .receive_apdu(&mut rapdu_buf, delay)
-               ?;
-
-           if rapdu.sw != 0x9000 {
-               error!("SE050 GenP256 Failed: {:x}", rapdu.sw);
-               return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-           }
-
-           trace_now!("SE050 GenP256 OK");
-           Ok(())
-      }
-    */
-    //###########################################################################
     //AN12413 //4.7 Secure Object management //4.7.1 WriteSecureObject// 4.7.1.2 WriteRSAKey
     /*
     Creates or writes an RSA key or a key component.
@@ -2320,7 +1311,7 @@ where
     */
 
     #[inline(never)]
-    fn write_rsa_key(
+    pub fn write_rsa_key(
         &mut self,
         policy: &[u8],
         objectid: &[u8; 4],
@@ -2361,59 +1352,59 @@ where
         Ok(())
     }
     /*
-        //NEW VERSION
+            //NEW VERSION
 
-        //###########################################################################
-        /* NOTE: hardcoded Object ID 0xae50ae50! */
-        /* no support yet for rfc3394 key wrappings, policies or max attempts */
-        //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey P.60
-        //P1_AES //template for
-        #[inline(never)]
-        fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
-            if key.len() != 16 {
-                todo!();
+            //###########################################################################
+            /* NOTE: hardcoded Object ID 0xae50ae50! */
+            /* no support yet for rfc3394 key wrappings, policies or max attempts */
+            //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey P.60
+            //P1_AES //template for
+            #[inline(never)]
+    pub        fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+                if key.len() != 16 {
+                    todo!();
+                }
+
+                let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
+                let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
+                let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), kekid);
+                let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), key);
+
+                let mut capdu = CApdu::new(
+                    ApduClass::ProprietaryPlain,
+                    Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
+                    Se050ApduP1CredType::AES.into(),
+                    Se050ApduP2::Default.into(),
+                    Some(0)
+                );
+                capdu.push(tlvp);
+                capdu.push(tlv1);
+                capdu.push(tlv2);
+                capdu.push(tlv3);
+
+                self.t1_proto
+                    .send_apdu(&capdu, delay)
+                    ?;
+
+                let mut rapdu_buf: [u8; 260] = [0; 260];
+                let rapdu = self.t1_proto
+                    .receive_apdu(&mut rapdu_buf, delay)
+                    ?;
+
+                if rapdu.sw != 0x9000 {
+                    error!("SE050 WriteAESKey Failed: {:x}", rapdu.sw);
+                    return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
+                }
+
+                Ok(())
             }
-
-            let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), &policy);
-            let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
-            let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), kekid);
-            let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), key);
-
-            let mut capdu = CApdu::new(
-                ApduClass::ProprietaryPlain,
-                Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
-                Se050ApduP1CredType::AES.into(),
-                Se050ApduP2::Default.into(),
-                Some(0)
-            );
-            capdu.push(tlvp);
-            capdu.push(tlv1);
-            capdu.push(tlv2);
-            capdu.push(tlv3);
-
-            self.t1_proto
-                .send_apdu(&capdu, delay)
-                ?;
-
-            let mut rapdu_buf: [u8; 260] = [0; 260];
-            let rapdu = self.t1_proto
-                .receive_apdu(&mut rapdu_buf, delay)
-                ?;
-
-            if rapdu.sw != 0x9000 {
-                error!("SE050 WriteAESKey Failed: {:x}", rapdu.sw);
-                return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-            }
-
-            Ok(())
-        }
-    */
+        */
     //OLD VERSION
 
     #[inline(never)]
     /* NOTE: hardcoded Object ID 0xae50ae50! */
     /* no support yet for rfc3394 key wrappings, policies or max attempts */
-    fn write_aes_key(
+    pub fn write_aes_key(
         &mut self,
         key: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -2458,7 +1449,10 @@ where
     //fn write_aes_key(&mut self,policy: &[u8], objectid: &[u8;4],kekid: &[u8;4],key: &[u8], delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
 
     //fn generate_aes_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
-    fn generate_aes_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
+    pub fn generate_aes_key(
+        &mut self,
+        delay: &mut dyn DelayUs<u32>,
+    ) -> Result<ObjectId, Se050Error> {
         /*   if key.len() != 16 {
                     todo!();
                 }
@@ -2507,7 +1501,7 @@ where
     /* no support yet for rfc3394 key wrappings, policies or max attempts */
     //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey P.60
     //P1_DES
-    fn write_des_key(
+    pub fn write_des_key(
         &mut self,
         policy: &[u8],
         objectid: &[u8; 4],
@@ -2559,7 +1553,7 @@ where
     /* no support yet for rfc3394 key wrappings, policies or max attempts */
     //4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.3 WriteSymmKey P.60
     //P1_HMAC
-    fn write_hmac_key(
+    pub fn write_hmac_key(
         &mut self,
         policy: &[u8],
         objectid: &[u8; 4],
@@ -2604,7 +1598,7 @@ where
     }
 
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject //4.7.1.4 WriteBinary  //P.61
-    fn write_binary(
+    pub fn write_binary(
         &mut self,
         policy: &[u8],
         objectid: &[u8; 4],
@@ -2655,7 +1649,7 @@ where
     #[inline(never)]
     /* NOTE: hardcoded Object ID 0xae50ae50! */
     //4.12 Crypto operations AES/DES // 4.12.4 CipherOneShot // ENCRYPT//  4.3.21 CipherMode // AES CBC NOPAD
-    fn encrypt_aes_oneshot(
+    pub fn encrypt_aes_oneshot(
         &mut self,
         data: &[u8],
         enc: &mut [u8],
@@ -2715,14 +1709,22 @@ where
     //WriteUserID 0x80 0x01 0x07 0x00
     /* NOTE: hardcoded Object ID 0xae51ae51! */
     // See AN12413 // 4.7 Secure Object management //4.7.1 WriteSecureObject P.57 //4.7.1.5 WriteUserID  //P.62
-    fn write_user_id(
+    pub fn write_user_id(
         &mut self,
         policy: &[u8],
         objectid: &[u8; 4],
-        user_identifier_value: &[u8; 16],
+        max_attempts: u8,
+        user_identifier_value: &[u8],
         delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
+        // if user_identifier_value.len() > 16 {
+        //     error!("Pins can't be more than 16 bytes");
+        //     return Err(Se050Error::UnknownError);
+        // }
+
         let tlvp = SimpleTlv::new(Se050TlvTag::Policy.into(), policy);
+        let m_arr = [max_attempts];
+        let tlvm = SimpleTlv::new(Se050TlvTag::MaxAttempts.into(), &m_arr);
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), user_identifier_value);
@@ -2733,12 +1735,20 @@ where
             Se050ApduP2::Default.into(),
             None,
         );
-        capdu.push(tlvp);
+        // if !policy.is_empty() {
+        //     capdu.push(tlvp);
+        // }
+        // if max_attempts != 0 {
+        //     capdu.push(tlvm);
+        // }
 
         capdu.push(tlv1);
 
         capdu.push(tlv2);
-        self.t1_proto.send_apdu(&capdu, delay)?;
+        self.t1_proto.send_apdu(&capdu, delay).map_err(|err| {
+            error!("Sending apdu failed: {:?}", err);
+            Se050Error::T1Error(err)
+        })?;
 
         let mut rapdu_buf: [u8; 16] = [0; 16];
         let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
@@ -2767,7 +1777,7 @@ where
     */
 
     #[inline(never)]
-    fn write_counter(
+    pub fn write_counter(
         &mut self,
         policy: &[u8],
         counterid: &[u8; 4],
@@ -2823,7 +1833,7 @@ where
     */
 
     #[inline(never)]
-    fn write_pcr(
+    pub fn write_pcr(
         &mut self,
         policy: &[u8],
         pcrid: &[u8; 4],
@@ -2880,7 +1890,7 @@ where
     */
 
     #[inline(never)]
-    fn import_object(
+    pub fn import_object(
         &mut self,
         identifier: &[u8; 4],
         rsakeycomponent: &[u8],
@@ -2939,7 +1949,7 @@ where
     */
 
     #[inline(never)]
-    fn import_external_object(
+    pub fn import_external_object(
         &mut self,
         authdata: &[u8],
         hostpublickeyidentifier: &[u8],
@@ -2987,60 +1997,60 @@ where
 
     //###########################################################################
     /*
-        // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
-        #[inline(never)]
-        fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
-        {
+            // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
+            #[inline(never)]
+    pub        fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
+            {
 
-            let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
-            let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(),  offset);
-            let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(),  length);
-            let tlv4 = SimpleTlv::new(Se050TlvTag::Tag4.into(),  &rsakeycomponent);
+                let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
+                let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(),  offset);
+                let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(),  length);
+                let tlv4 = SimpleTlv::new(Se050TlvTag::Tag4.into(),  &rsakeycomponent);
 
-            let tlv5 = SimpleTlv::new(Se050TlvTag::Tag1.into(), attobjectidentifier);
-            let tlv6 = SimpleTlv::new(Se050TlvTag::Tag2.into(),  &attlogo);
-            let tlv7 = SimpleTlv::new(Se050TlvTag::Tag3.into(),  freshnessrandom);
+                let tlv5 = SimpleTlv::new(Se050TlvTag::Tag1.into(), attobjectidentifier);
+                let tlv6 = SimpleTlv::new(Se050TlvTag::Tag2.into(),  &attlogo);
+                let tlv7 = SimpleTlv::new(Se050TlvTag::Tag3.into(),  freshnessrandom);
 
-        let mut capdu = CApdu::new(
-        ApduClass::ProprietaryPlain,
-        Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
-        Se050ApduP1CredType::Default.into(),
-        Se050ApduP2::Default.into(),
-        Some(0x00)
-        );
+            let mut capdu = CApdu::new(
+            ApduClass::ProprietaryPlain,
+            Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
+            Se050ApduP1CredType::Default.into(),
+            Se050ApduP2::Default.into(),
+            Some(0x00)
+            );
 
-        capdu.push(tlv1);
-        capdu.push(tlv2);
-        capdu.push(tlv3);
-        capdu.push(tlv4);
-        capdu.push(tlv5);
-        capdu.push(tlv6);
-        capdu.push(tlv7);
+            capdu.push(tlv1);
+            capdu.push(tlv2);
+            capdu.push(tlv3);
+            capdu.push(tlv4);
+            capdu.push(tlv5);
+            capdu.push(tlv6);
+            capdu.push(tlv7);
 
-        self.t1_proto
-        .send_apdu(&capdu, delay)
-        ?;
+            self.t1_proto
+            .send_apdu(&capdu, delay)
+            ?;
 
-        let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self.t1_proto
-        .receive_apdu(&mut rapdu_buf, delay)
-        ?;
+            let mut rapdu_buf: [u8; 260] = [0; 260];
+            let rapdu = self.t1_proto
+            .receive_apdu(&mut rapdu_buf, delay)
+            ?;
 
-        if rapdu.sw != 0x9000 {
-        error!("SE050 read_secure_object Failed: {:x}", rapdu.sw);
-        return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-        }
+            if rapdu.sw != 0x9000 {
+            error!("SE050 read_secure_object Failed: {:x}", rapdu.sw);
+            return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
+            }
 
-        Ok(())
-        }
+            Ok(())
+            }
 
-    */
+        */
 
     //###########################################################################
     // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.1 ReadObject // P.65-66
     #[inline(never)]
     //fn read_secure_object(&mut self,objectidentifier: &[u8;4], offset: &[u8;2],length: &[u8;2], rsakeycomponent : &[u8],  attobjectidentifier: &[u8;4],  attlogo: &[u8],   freshnessrandom: &[u8;16],     delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
-    fn read_secure_object(
+    pub fn read_secure_object(
         &mut self,
         buf: &mut [u8],
         objectidentifier: &[u8; 4],
@@ -3056,7 +2066,7 @@ where
             //Into::<u8>::into(Se050ApduInstruction::Read),
             Se050ApduP1CredType::Default.into(),
             Se050ApduP2::Default.into(),
-            Some(0x00),
+            Some(0x1FF),
         );
 
         capdu.push(tlv1);
@@ -3108,7 +2118,7 @@ where
     //###########################################################################
     // See AN12413 // 4.7 Secure Object management // 4.7.3 ReadSecureObject //4.7.3.2 ExportObject // P.67
     #[inline(never)]
-    fn export_secure_object(
+    pub fn export_secure_object(
         &mut self,
         objectidentifier: &[u8; 4],
         rsakeycomponent: &[u8],
@@ -3159,7 +2169,7 @@ where
     //###########################################################################
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.1 ReadType P.67-68
     #[inline(never)]
-    fn read_type(
+    pub fn read_type(
         &mut self,
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayUs<u32>,
@@ -3194,7 +2204,7 @@ where
     //###########################################################################
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject 4.7.4.2 ReadSize P.68
     #[inline(never)]
-    fn read_size(
+    pub fn read_size(
         &mut self,
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayUs<u32>,
@@ -3229,7 +2239,7 @@ where
     //###########################################################################
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.3 ReadIDList P.69
     #[inline(never)]
-    fn read_id_list(
+    pub fn read_id_list(
         &mut self,
         offset: &[u8; 2],
         delay: &mut dyn DelayUs<u32>,
@@ -3265,151 +2275,6 @@ where
 
     //###########################################################################
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
-    /*
-       #[inline(never)]
-       fn check_object_exists(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
-       {
-
-       let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
-
-       let mut capdu = CApdu::new(
-       ApduClass::ProprietaryPlain,
-       Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
-       Se050ApduP1CredType::Default.into(),
-       Se050ApduP2::Exist.into(),
-       Some(0x00)
-       );
-
-       capdu.push(tlv1);
-
-       self.t1_proto
-       .send_apdu(&capdu, delay)
-       ?;
-
-       let mut rapdu_buf: [u8; 260] = [0; 260];
-       let rapdu = self.t1_proto
-       .receive_apdu(&mut rapdu_buf, delay)
-       ?;
-
-       if rapdu.sw != 0x9000 {
-       error!("SE050 check_object_exists Failed: {:x}", rapdu.sw);
-       return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-       }
-
-       Ok(())
-       }
-    */
-
-    /*
-     //###########################################################################
-       //###########################################################################
-        // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
-        #[inline(never)]
-        fn check_object_exists_p256(&mut self, buf: &mut [u8],  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>
-        {
-
-            //let mut buflen: [u8; 2] = [0, 0];
-           // BE::write_u16(&mut buflen, buf.len() as u16);
-
-           let a : [u8; 1] = [0x00];
-
-           let b : [u8; 1] = [0x01];
-
-
-        let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xE8, 0xA0, 0x01]);
-
-        let mut capdu = CApdu::new(
-        ApduClass::ProprietaryPlain,
-        Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
-        Se050ApduP1CredType::Default.into(),
-        Se050ApduP2::Exist.into(),
-        Some(0x00)
-        );
-
-        capdu.push(tlv1);
-
-        self.t1_proto
-        .send_apdu(&capdu, delay)
-        ?;
-
-        let mut rapdu_buf: [u8; 260] = [0; 260];
-
-        let rapdu = self.t1_proto
-        .receive_apdu(&mut rapdu_buf, delay)
-        ?;
-
-        if rapdu.sw != 0x9000 {
-        error!("SE050 check_object_exists_p256 Failed: {:x}", rapdu.sw);
-        return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-        }
-
-        let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
-            error!("SE050 check_object_exists_p256 Return TLV Missing");
-            Se050Error::UnknownError })?;
-    /*
-        if tlv1_ret.data().len() != buf.len() {
-            error!("SE050 check_object_exists_p256 Length Mismatch");
-            return Err(Se050Error::UnknownError);
-        }
-    */
-
-    //Ok(());
-
-    //Ok(buf.copy_from_slice(tlv1_ret.data()))
-
-
-
-       buf.copy_from_slice(tlv1_ret.data());
-
-
-
-
-
-     Ok(buf.copy_from_slice(tlv1_ret.data()))
-
-
-
-
-        }
-
-    */
-
-    /*
-
-        //###########################################################################
-        // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
-        #[inline(never)]
-        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>
-        {
-        let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
-
-        let mut capdu = CApdu::new(
-        ApduClass::ProprietaryPlain,
-        Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
-        Se050ApduP1CredType::Default.into(),
-        Se050ApduP2::DeleteObject.into(),
-        Some(0x00)
-        );
-
-        capdu.push(tlv1);
-
-        self.t1_proto
-        .send_apdu(&capdu, delay)
-        ?;
-
-        let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self.t1_proto
-        .receive_apdu(&mut rapdu_buf, delay)
-        ?;
-
-        if rapdu.sw != 0x9000 {
-        error!("SE050 delete_secure_object Failed: {:x}", rapdu.sw);
-        return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-        }
-
-        Ok(())
-        }
-    */
 
     //###########################################################################
     //###########################################################################
@@ -3428,7 +2293,7 @@ where
     //TLV[TAG_1] 1-byte curve identifier (from ECCurve)
 
     #[inline(never)]
-    fn create_eccurve(
+    pub fn create_eccurve(
         &mut self,
         eccurve: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -3467,7 +2332,7 @@ where
     //TLV[TAG_3] Bytestring containing curve parameter value.
 
     #[inline(never)]
-    fn set_eccurve_param(
+    pub fn set_eccurve_param(
         &mut self,
         eccurve: &[u8],
         eccurveparam: &[u8],
@@ -3510,7 +2375,7 @@ where
     //TLV[TAG_1] 4-byte identifier
 
     #[inline(never)]
-    fn get_eccurve_id(
+    pub fn get_eccurve_id(
         &mut self,
         identifier: &[u8; 4],
         delay: &mut dyn DelayUs<u32>,
@@ -3549,7 +2414,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn read_eccurve_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn read_eccurve_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
@@ -3579,7 +2444,7 @@ where
 
     #[inline(never)]
 
-    fn delete_eccurve(
+    pub fn delete_eccurve(
         &mut self,
         eccurve: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -3630,7 +2495,7 @@ where
     //TLV[TAG_3] 1-byte Crypto Object subtype, either from DigestMode, CipherMode or MACAlgo (depending on TAG_2).
 
     #[inline(never)]
-    fn create_crypto_object(
+    pub fn create_crypto_object(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         cryptocontext: &[u8],
@@ -3674,7 +2539,10 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn read_crypto_object_list(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn read_crypto_object_list(
+        &mut self,
+        delay: &mut dyn DelayUs<u32>,
+    ) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
@@ -3706,7 +2574,7 @@ where
 
     #[inline(never)]
 
-    fn delete_crypto_object(
+    pub fn delete_crypto_object(
         &mut self,
         cryptoobjectidentifier: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -3765,7 +2633,7 @@ where
     //TLV[TAG_3] Byte array containing input data.
 
     #[inline(never)]
-    fn ecdsa_sign(
+    pub fn ecdsa_sign(
         &mut self,
         eckeyidentifier: &[u8; 4],
         ecsignaturealgo: &[u8],
@@ -3813,7 +2681,7 @@ where
     //TLV[TAG_3] Byte array containing plain input data.
 
     #[inline(never)]
-    fn eddsa_sign(
+    pub fn eddsa_sign(
         &mut self,
         eckeyidentifier: &[u8; 4],
         edsignaturealgo: &[u8],
@@ -3863,7 +2731,7 @@ where
 
     #[inline(never)]
 
-    fn ecdaa_sign(
+    pub fn ecdaa_sign(
         &mut self,
         eckeyidentifier: &[u8; 4],
         ecdaasignaturealgo: &[u8],
@@ -3915,7 +2783,7 @@ where
 
     #[inline(never)]
 
-    fn ecdsa_verify(
+    pub fn ecdsa_verify(
         &mut self,
         eckeyidentifier: &[u8; 4],
         ecsignaturealgo: &[u8],
@@ -3972,7 +2840,7 @@ where
 
     #[inline(never)]
 
-    fn eddsa_verify(
+    pub fn eddsa_verify(
         &mut self,
         eckeyidentifier: &[u8; 4],
         edsignaturealgo: &[u8],
@@ -4028,7 +2896,7 @@ where
 
     #[inline(never)]
 
-    fn ecdh_generate_shared_secret(
+    pub fn ecdh_generate_shared_secret(
         &mut self,
         eckeyidentifier: &[u8; 4],
         eckey: &[u8],
@@ -4088,7 +2956,7 @@ where
 
     #[inline(never)]
 
-    fn rsa_sign(
+    pub fn rsa_sign(
         &mut self,
         rsakeyidentifier: &[u8; 4],
         rsasignaturealgo: &[u8],
@@ -4136,7 +3004,7 @@ where
 
     #[inline(never)]
 
-    fn rsa_verify(
+    pub fn rsa_verify(
         &mut self,
         rsakeyidentifier: &[u8; 4],
         rsasignaturealgo: &[u8],
@@ -4184,7 +3052,7 @@ where
     //TLV[TAG_3] Byte array containing data to be encrypted.
 
     #[inline(never)]
-    fn rsa_encrypt(
+    pub fn rsa_encrypt(
         &mut self,
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
@@ -4229,7 +3097,7 @@ where
     //TLV[TAG_3] Byte array containing data to be decrypted.
 
     #[inline(never)]
-    fn rsa_decrypt(
+    pub fn rsa_decrypt(
         &mut self,
         rsakeyidentifier: &[u8; 4],
         rsaencryptionalgo: &[u8],
@@ -4304,7 +3172,7 @@ where
     //[Conditional: only when the Crypto Object type equals CC_CIPHER and subtype is not including ECB]
 
     #[inline(never)]
-    fn cipher_init_encrypt(
+    pub fn cipher_init_encrypt(
         &mut self,
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
@@ -4343,7 +3211,7 @@ where
     }
 
     #[inline(never)]
-    fn cipher_init_decrypt(
+    pub fn cipher_init_decrypt(
         &mut self,
         keyobjectidentifier: &[u8; 4],
         cryptoobjectidentifier: &[u8; 2],
@@ -4387,7 +3255,7 @@ where
     //TLV[TAG_3] Byte array containing input data
 
     #[inline(never)]
-    fn cipher_update(
+    pub fn cipher_update(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
@@ -4428,7 +3296,7 @@ where
     //TLV[TAG_3] Byte array containing input data
 
     #[inline(never)]
-    fn cipher_final(
+    pub fn cipher_final(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         inputdata: &[u8],
@@ -4476,7 +3344,7 @@ where
     equals CC_CIPHER and subtype is not including     ECB]
     */
     #[inline(never)]
-    fn cipher_one_shot_encrypt(
+    pub fn cipher_one_shot_encrypt(
         &mut self,
         keybjectidentifier: &[u8; 4],
         ciphermode: &[u8],
@@ -4518,7 +3386,7 @@ where
     }
 
     #[inline(never)]
-    fn cipher_one_shot_decrypt(
+    pub fn cipher_one_shot_decrypt(
         &mut self,
         keybjectidentifier: &[u8; 4],
         ciphermode: &[u8],
@@ -4558,77 +3426,77 @@ where
         Ok(())
     }
     /*
-    //NEW VERSION
-        //###########################################################################
-        #[inline(never)]
-        /* NOTE: hardcoded Object ID 0xae50ae50! */
-        //4.12 Crypto operations AES/DES // 4.12.4 CipherOneShot // ENCRYPT P.87
-        //  4.3.21 CipherMode // 4.3.21 CipherMode Table 39. CipherMode constants P.43
-        fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayUs<u32>, ) -> Result<(), Se050Error>
-        {
-            if data.len() > 240 || (data.len() % 16 != 0) {
-                error!("Input data too long or unaligned");
-                return Err(Se050Error::UnknownError);
+        //NEW VERSION
+            //###########################################################################
+            #[inline(never)]
+            /* NOTE: hardcoded Object ID 0xae50ae50! */
+            //4.12 Crypto operations AES/DES // 4.12.4 CipherOneShot // ENCRYPT P.87
+            //  4.3.21 CipherMode // 4.3.21 CipherMode Table 39. CipherMode constants P.43
+    pub        fn encrypt_aes_oneshot(&mut self, objectid: &[u8;4], cipher_mode: &[u8], data: &[u8],  enc: &mut [u8], delay: &mut dyn DelayUs<u32>, ) -> Result<(), Se050Error>
+            {
+                if data.len() > 240 || (data.len() % 16 != 0) {
+                    error!("Input data too long or unaligned");
+                    return Err(Se050Error::UnknownError);
+                }
+                if enc.len() != data.len() {
+                    error!("Insufficient output buffer");
+                    return Err(Se050Error::UnknownError);
+                }
+                let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
+                let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), & cipher_mode);	// 4.3.21 CipherMode Table 39. CipherMode constants
+                let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), data);
+                let mut capdu = CApdu::new(
+                    ApduClass::ProprietaryPlain,
+                    Se050ApduInstruction::Crypto.into(),
+                    Se050ApduP1CredType::Cipher.into(),
+                    Se050ApduP2::EncryptOneshot.into(),
+                    Some(0)
+                );
+                capdu.push(tlv1);
+                capdu.push(tlv2);
+                capdu.push(tlv3);
+                self.t1_proto
+                    .send_apdu(&capdu, delay)
+                    ?;
+
+                let mut rapdu_buf: [u8; 260] = [0; 260];
+                let rapdu = self.t1_proto
+                    .receive_apdu(&mut rapdu_buf, delay)
+                    ?;
+
+                if rapdu.sw != 0x9000 {
+                    //error!("SE050 EncryptAESOneshot {:x} Failed: {:x}",  cipher_mode, rapdu.sw);
+                    //error!("SE050 EncryptStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  c  rapdu.sw);
+                    error!("SE050 EncryptAESOneshot {:x?} Failed: {:x}",  cipher_mode, rapdu.sw);
+
+                    return Err(Se050Error::UnknownError);
+                }
+
+                let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
+                    error!("SE050 EncryptAESOneshot Return TLV Missing");
+                    Se050Error::UnknownError })?;
+
+                if tlv1_ret.data().len() != enc.len() {
+                    error!("SE050 EncryptAESOneshot Length Mismatch");
+                    return Err(Se050Error::UnknownError);
+                }
+                enc.copy_from_slice(tlv1_ret.data());
+              //  trace_now!("SE050 EncryptAESOneshot {:x} OK",  cipher_mode );
+               // trace_now!("SE050 EncryptAESOneshot   OK",  cipher_mode );
+               trace_now!("SE050 EncryptAESOneshot {:x?} OK",  cipher_mode );
+
+
+
+                Ok(())
             }
-            if enc.len() != data.len() {
-                error!("Insufficient output buffer");
-                return Err(Se050Error::UnknownError);
-            }
-            let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectid);
-            let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), & cipher_mode);	// 4.3.21 CipherMode Table 39. CipherMode constants
-            let tlv3 = SimpleTlv::new(Se050TlvTag::Tag3.into(), data);
-            let mut capdu = CApdu::new(
-                ApduClass::ProprietaryPlain,
-                Se050ApduInstruction::Crypto.into(),
-                Se050ApduP1CredType::Cipher.into(),
-                Se050ApduP2::EncryptOneshot.into(),
-                Some(0)
-            );
-            capdu.push(tlv1);
-            capdu.push(tlv2);
-            capdu.push(tlv3);
-            self.t1_proto
-                .send_apdu(&capdu, delay)
-                ?;
-
-            let mut rapdu_buf: [u8; 260] = [0; 260];
-            let rapdu = self.t1_proto
-                .receive_apdu(&mut rapdu_buf, delay)
-                ?;
-
-            if rapdu.sw != 0x9000 {
-                //error!("SE050 EncryptAESOneshot {:x} Failed: {:x}",  cipher_mode, rapdu.sw);
-                //error!("SE050 EncryptStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported))   Failed: {:x}",  c  rapdu.sw);
-                error!("SE050 EncryptAESOneshot {:x?} Failed: {:x}",  cipher_mode, rapdu.sw);
-
-                return Err(Se050Error::UnknownError);
-            }
-
-            let tlv1_ret = rapdu.get_tlv(Se050TlvTag::Tag1.into()).ok_or_else(|| {
-                error!("SE050 EncryptAESOneshot Return TLV Missing");
-                Se050Error::UnknownError })?;
-
-            if tlv1_ret.data().len() != enc.len() {
-                error!("SE050 EncryptAESOneshot Length Mismatch");
-                return Err(Se050Error::UnknownError);
-            }
-            enc.copy_from_slice(tlv1_ret.data());
-          //  trace_now!("SE050 EncryptAESOneshot {:x} OK",  cipher_mode );
-           // trace_now!("SE050 EncryptAESOneshot   OK",  cipher_mode );
-           trace_now!("SE050 EncryptAESOneshot {:x?} OK",  cipher_mode );
-
-
-
-            Ok(())
-        }
-    */
+        */
     //###########################################################################
     //ERWEITERT
     #[inline(never)]
     /* NOTE: hardcoded Object ID 0xae50ae50! */
     //4.12 Crypto operations AES/DES // 4.12.4 CipherOneShot // DECRYPT P.87
     //  4.3.21 CipherMode // 4.3.21 CipherMode Table 39. CipherMode constants P.43
-    fn decrypt_aes_oneshot(
+    pub fn decrypt_aes_oneshot(
         &mut self,
         objectid: &[u8; 4],
         cipher_mode: &[u8],
@@ -4703,7 +3571,7 @@ where
     /* NOTE: hardcoded Object ID 0xae50ae50! */
     //4.12 Crypto operations AES/DES // 4.12.4 CipherOneShot // ENCRYPT  P.87
     //  4.3.21 CipherMode // 4.3.21 CipherMode Table 39. CipherMode constants P.43
-    fn encrypt_des_oneshot(
+    pub fn encrypt_des_oneshot(
         &mut self,
         objectid: &[u8; 4],
         cipher_mode: &[u8],
@@ -4771,7 +3639,7 @@ where
     /* NOTE: hardcoded Object ID 0xae50ae50! */
     //4.12 Crypto operations AES/DES // 4.12.4 CipherOneShot // DECRYPT P.87
     //4.3.21 CipherMode // 4.3.21 CipherMode Table 39. CipherMode constants P.43
-    fn decrypt_des_oneshot(
+    pub fn decrypt_des_oneshot(
         &mut self,
         objectid: &[u8; 4],
         cipher_mode: &[u8],
@@ -4868,7 +3736,7 @@ where
     */
 
     #[inline(never)]
-    fn mac_init(
+    pub fn mac_init(
         &mut self,
         mackeybjectidentifier: &[u8; 4],
         cryptobjectidentifier: &[u8; 2],
@@ -4911,7 +3779,7 @@ where
     */
     #[inline(never)]
 
-    fn mac_update(
+    pub fn mac_update(
         &mut self,
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
@@ -4956,7 +3824,7 @@ where
     */
 
     #[inline(never)]
-    fn mac_final(
+    pub fn mac_final(
         &mut self,
         macdatainput: &[u8],
         cryptobjectidentifier: &[u8; 2],
@@ -5008,7 +3876,7 @@ where
     */
 
     #[inline(never)]
-    fn mac_one_shot(
+    pub fn mac_one_shot(
         &mut self,
         keyobjectidentifier: &[u8; 4],
         macalgo: &[u8],
@@ -5079,7 +3947,7 @@ where
 
     #[inline(never)]
 
-    fn hkdf(
+    pub fn hkdf(
         &mut self,
         hmackeyidentifier: &[u8; 4],
         digestmode: &[u8],
@@ -5140,7 +4008,7 @@ where
     */
 
     #[inline(never)]
-    fn pbkdf2derivekey(
+    pub fn pbkdf2derivekey(
         &mut self,
         passwordidentifier: &[u8; 4],
         salt: &[u8; 64],
@@ -5225,7 +4093,7 @@ where
     */
 
     #[inline(never)]
-    fn dfdiversifykey(
+    pub fn dfdiversifykey(
         &mut self,
         masterkeyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 4],
@@ -5275,7 +4143,7 @@ where
 
     #[inline(never)]
 
-    fn dfauthenticatefirstpart1(
+    pub fn dfauthenticatefirstpart1(
         &mut self,
         keyidentifier: &[u8; 4],
         diversifiedkeyidentifier: &[u8; 16],
@@ -5321,7 +4189,7 @@ where
 
     #[inline(never)]
 
-    fn dfauthenticatefirstpart2(
+    pub fn dfauthenticatefirstpart2(
         &mut self,
         input: &[u8; 32],
         delay: &mut dyn DelayUs<u32>,
@@ -5364,7 +4232,7 @@ where
     */
 
     #[inline(never)]
-    fn dfauthenticatenonfirstpart1(
+    pub fn dfauthenticatenonfirstpart1(
         &mut self,
         keyidentifier: &[u8; 4],
         encryptedcardchallenge: &[u8; 16],
@@ -5412,7 +4280,7 @@ where
     */
 
     #[inline(never)]
-    fn dfauthenticatenonfirstpart2(
+    pub fn dfauthenticatenonfirstpart2(
         &mut self,
         edata: &[u8; 16],
         delay: &mut dyn DelayUs<u32>,
@@ -5453,7 +4321,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn dfdumpdsessionkeys(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5503,7 +4371,7 @@ where
     */
 
     #[inline(never)]
-    fn dfchangekeypart1(
+    pub fn dfchangekeypart1(
         &mut self,
         oldkey: &[u8; 4],
         newkey: &[u8; 4],
@@ -5559,7 +4427,7 @@ where
     */
 
     #[inline(never)]
-    fn dfchangekeypart2(
+    pub fn dfchangekeypart2(
         &mut self,
         mac: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -5602,7 +4470,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn dfkillauthentication(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn dfkillauthentication(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5641,7 +4509,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn tls_generate_random(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn tls_generate_random(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Crypto) | APDU_INSTRUCTION_TRANSIENT,
@@ -5688,7 +4556,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn tls_calculate_pre_master_secret(
+    pub fn tls_calculate_pre_master_secret(
         &mut self,
         pskidentifier: &[u8; 4],
         keypairidentifier: &[u8; 4],
@@ -5763,7 +4631,7 @@ where
     */
 
     #[inline(never)]
-    fn tls_perform_prf(
+    pub fn tls_perform_prf(
         &mut self,
         hmackeyidentifier: &[u8; 4],
         digestmode: &[u8],
@@ -5842,7 +4710,7 @@ where
      */
 
     #[inline(never)]
-    fn i2cm_execute_command_set(
+    pub fn i2cm_execute_command_set(
         &mut self,
         i2ccommand: &[u8],
         attestationobjectidentifier: &[u8],
@@ -5913,7 +4781,7 @@ where
     //TLV[TAG_2] 2-byte Crypto Object identifier
 
     #[inline(never)]
-    fn digest_init(
+    pub fn digest_init(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         delay: &mut dyn DelayUs<u32>,
@@ -5956,7 +4824,7 @@ where
     // TLV[TAG_3] Data to be hashed.
 
     #[inline(never)]
-    fn digest_update(
+    pub fn digest_update(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
@@ -6002,7 +4870,7 @@ where
     // TLV[TAG_3] Data to be hashed.
 
     #[inline(never)]
-    fn digest_final(
+    pub fn digest_final(
         &mut self,
         cryptoobjectidentifier: &[u8; 2],
         datatobehashed: &[u8],
@@ -6048,7 +4916,7 @@ where
     // TLV[TAG_2] Data to be hashed.
 
     #[inline(never)]
-    fn digest_one_shot(
+    pub fn digest_one_shot(
         &mut self,
         digestmode: &[u8],
         datatobehashed: &[u8],
@@ -6106,7 +4974,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn get_version(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn get_version(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6138,7 +5006,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn get_timestamp(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn get_timestamp(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6176,7 +5044,7 @@ where
     // TLV[TAG_1] Memory
 
     #[inline(never)]
-    fn get_free_memory(
+    pub fn get_free_memory(
         &mut self,
         memoryconstant: &[u8],
         delay: &mut dyn DelayUs<u32>,
@@ -6227,7 +5095,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    fn delete_all(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn delete_all(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             // Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -6256,121 +5124,121 @@ where
     }
 
     /*
-    //#######################################################################################
+        //#######################################################################################
 
 
-    //###########################################################################
-        // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
-        #[inline(never)]
-        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>
-        {
+        //###########################################################################
+            // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
+            #[inline(never)]
+    pub        fn delete_secure_object(&mut self,objectidentifier: &[u8;4] ,  delay: &mut dyn DelayUs<u32>) -> Result< (), Se050Error>
+            {
 
-        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  ");
+            trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  ");
 
-        let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
+            let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
 
-        let mut capdu = CApdu::new(
+            let mut capdu = CApdu::new(
 
-        ApduClass::ProprietaryPlain,
+            ApduClass::ProprietaryPlain,
 
-       // Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
+           // Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
 
-        Into::<u8>::into(Se050ApduInstruction::Mgmt) ,
+            Into::<u8>::into(Se050ApduInstruction::Mgmt) ,
 
-        Se050ApduP1CredType::Default.into(),
+            Se050ApduP1CredType::Default.into(),
 
-        Se050ApduP2::DeleteObject.into(),
+            Se050ApduP2::DeleteObject.into(),
 
-        None
+            None
 
-        );
+            );
 
-        trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  tlv1");
-        capdu.push(tlv1);
+            trace_now!("Se050 crate: SE050 delete_secure_object DEBUG  tlv1");
+            capdu.push(tlv1);
 
-        self.t1_proto
-        .send_apdu(&capdu, delay)
-        ?;
+            self.t1_proto
+            .send_apdu(&capdu, delay)
+            ?;
 
-        let mut rapdu_buf: [u8; 260] = [0; 260];
+            let mut rapdu_buf: [u8; 260] = [0; 260];
 
-        let rapdu = self.t1_proto
-        .receive_apdu(&mut rapdu_buf, delay)
-        ?;
+            let rapdu = self.t1_proto
+            .receive_apdu(&mut rapdu_buf, delay)
+            ?;
 
-        if rapdu.sw != 0x9000 {
-        error!("SE050 delete_secure_object Failed: {:x}", rapdu.sw);
-        return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
-        }
+            if rapdu.sw != 0x9000 {
+            error!("SE050 delete_secure_object Failed: {:x}", rapdu.sw);
+            return Err(Se050Error::UnknStatus(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
+            }
 
 
-        trace_now!("Se050 crate: SE050 delete secure object OK");
+            trace_now!("Se050 crate: SE050 delete secure object OK");
 
-        Ok(())
+            Ok(())
 
-        }
-    */
+            }
+        */
 
     //################################################
     //WORK IN PROGRESS
     /*
-    #[inline(never)]
-    /* ASSUMPTION: SE050 is provisioned with an instantiated P-256 curve object;
-        see NXP AN12413 -> Secure Objects -> Default Configuration */
-    /* NOTE: hardcoded Object ID 0xae51ae51! */
-    fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
+        #[inline(never)]
+        /* ASSUMPTION: SE050 is provisioned with an instantiated P-256 curve object;
+            see NXP AN12413 -> Secure Objects -> Default Configuration */
+        /* NOTE: hardcoded Object ID 0xae51ae51! */
+    pub    fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
 
-        trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
-        //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x59, 0xae, 0x59]);
-        let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa0, 0x06]);
+            trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv1");
+            //let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xae, 0x59, 0xae, 0x59]);
+            let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0x20, 0xe8, 0xa0, 0x06]);
 
-        trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv2");
-        let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0x03]);	// NIST P-256
-        let mut capdu = CApdu::new(
-            ApduClass::ProprietaryPlain,
+            trace_now!("Se050 crate: SE050 GenP256 DEBUG  tlv2");
+            let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0x03]);	// NIST P-256
+            let mut capdu = CApdu::new(
+                ApduClass::ProprietaryPlain,
 
-              Into::<u8>::into(Se050ApduInstruction::Write) ,
+                  Into::<u8>::into(Se050ApduInstruction::Write) ,
 
-          //  Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
-       //       Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_AUTH_OBJECT,
-    // pub const APDU_INSTRUCTION_AUTH_OBJECT: u8 = 0x40;
+              //  Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
+           //       Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_AUTH_OBJECT,
+        // pub const APDU_INSTRUCTION_AUTH_OBJECT: u8 = 0x40;
 
-        //    Into::<u8>::into(Se050ApduInstruction::Write),
+            //    Into::<u8>::into(Se050ApduInstruction::Write),
 
-            Se050ApduP1CredType::EC | Se050ApduP1KeyType::KeyPair,
-          // Se050ApduP1CredType::EC | Se050ApduP1KeyType::PrivateKey,
+                Se050ApduP1CredType::EC | Se050ApduP1KeyType::KeyPair,
+              // Se050ApduP1CredType::EC | Se050ApduP1KeyType::PrivateKey,
 
-            Se050ApduP2::Default.into(),
-            None
-        );
-        capdu.push(tlv1);
+                Se050ApduP2::Default.into(),
+                None
+            );
+            capdu.push(tlv1);
 
-        trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv1");
+            trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv1");
 
-        capdu.push(tlv2);
-        trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv2");
+            capdu.push(tlv2);
+            trace_now!("Se050 crate: SE050 GenP256 DEBUG pushtlv2");
 
-        self.t1_proto
-            .send_apdu(&capdu, delay)
-            ?;
+            self.t1_proto
+                .send_apdu(&capdu, delay)
+                ?;
 
-        let mut rapdu_buf: [u8; 16] = [0; 16];
-        let rapdu = self.t1_proto
-            .receive_apdu(&mut rapdu_buf, delay)
-            ?;
+            let mut rapdu_buf: [u8; 16] = [0; 16];
+            let rapdu = self.t1_proto
+                .receive_apdu(&mut rapdu_buf, delay)
+                ?;
 
-        if rapdu.sw != 0x9000 {
-            error!("Se050 crate: SE050 GenP256 Failed: {:x}", rapdu.sw);
-            return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
+            if rapdu.sw != 0x9000 {
+                error!("Se050 crate: SE050 GenP256 Failed: {:x}", rapdu.sw);
+                return Err(Se050Error::Status(rapdu.sw.try_into().unwrap_or(Status::FunctionNotSupported)));
+            }
+
+            trace_now!("Se050 crate: SE050 GenP256 OK");
+
+
+            Ok(ObjectId([0x20, 0xe8, 0xa0, 0x06]))
         }
 
-        trace_now!("Se050 crate: SE050 GenP256 OK");
-
-
-        Ok(ObjectId([0x20, 0xe8, 0xa0, 0x06]))
-    }
-
-    */
+        */
 
     //################################################
     //WORK FINSIHED
@@ -6381,7 +5249,7 @@ where
     //OLD VERSION
 
     #[inline(never)]
-    fn get_random(
+    pub fn get_random(
         &mut self,
         buf: &mut [u8],
         delay: &mut dyn DelayUs<u32>,
@@ -6452,7 +5320,7 @@ where
     #[inline(never)]
     //fn generate_p256_key(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<ObjectId, Se050Error> {
 
-    fn generate_p256_key(
+    pub fn generate_p256_key(
         &mut self,
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayUs<u32>,
@@ -6513,7 +5381,7 @@ where
 
     #[inline(never)]
 
-    fn generate_ed255_key_pair(
+    pub fn generate_ed255_key_pair(
         &mut self,
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayUs<u32>,
@@ -6565,7 +5433,7 @@ where
     //###########################################################################
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.5 DeleteSecureObject P.70
     #[inline(never)]
-    fn delete_secure_object(
+    pub fn delete_secure_object(
         &mut self,
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayUs<u32>,
@@ -6609,12 +5477,11 @@ where
     //###########################################################################
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.4 CheckObjectExists P.70
     #[inline(never)]
-    fn check_object_exists(
+    pub fn check_object_exists(
         &mut self,
-        buf: &mut [u8],
         objectidentifier: &[u8; 4],
         delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error> {
+    ) -> Result<bool, Se050Error> {
         trace_now!("Se050 crate: SE050 check_object_exist DEBUG");
 
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), objectidentifier);
@@ -6648,11 +5515,7 @@ where
             Se050Error::UnknownError
         })?;
 
-        buf.copy_from_slice(tlv1_ret.data());
-
         //buf.clone_from_slice(tlv1_ret.data());
-
-        trace_now!("Se050 crate  buf : {:#?}\n", buf);
 
         trace_now!(
             "Se050 crate Check Object Exist tlv1_ret : {:#?} \n",
@@ -6664,17 +5527,11 @@ where
             tlv1_ret.data()
         );
 
-        if buf.contains(&1) {
-            trace_now!("Object: {:#?} exist \n", objectidentifier);
-        } else if buf.contains(&2) {
-            trace_now!("Object: {:#?} does not exist \n", objectidentifier);
-        } else {
-            trace_now!("Object: {:#?} UnknownError \n", objectidentifier);
+        match tlv1_ret.data() {
+            &[0x01] => Ok(false),
+            &[0x02] => Ok(true),
+            _ => Err(Se050Error::UnknownError),
         }
-
-        trace_now!("Se050 crate: SE050 Check Object Exist OK \n ");
-
-        Ok(())
     }
 
     //###########################################################################
@@ -6684,7 +5541,7 @@ where
     //P1_EC 4.3.19 ECCurve P.42
     #[inline(never)]
     //fn write_ec_key(&mut self,policy: &[u8],  objectid: &[u8;4], eccurve: &[u8], private_key_value: &[u8],  delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error>
-    fn write_ec_key(
+    pub fn write_ec_key(
         &mut self,
         objectid: &[u8; 4],
         eccurve: &[u8],

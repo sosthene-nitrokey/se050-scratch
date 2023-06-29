@@ -355,7 +355,7 @@ where
         }
         let plp_type = atrbuf[11];
         let plp_len = atrbuf[12];
-        if plp_type != 2 /* I2C */ || plp_len != 11 {
+        if plp_type != 2 || plp_len != 11 {
             return Err(T1Error::ProtocolError);
         }
         let _hb_len = atrbuf[24];

@@ -94,3 +94,12 @@ Writing stuff
 
 WriteBinary doesn't work for data longer than 255 bytes?
 TLV serialization!
+
+
+Factory reset
+=============
+
+Need restricted authentication object `RESERVED_ID_FACTORY_RESET`.
+Created with user id 0001020304
+
+Created object `01020304` with userid `01020304`
