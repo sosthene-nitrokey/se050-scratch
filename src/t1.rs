@@ -70,7 +70,6 @@ where
 
     fn twi_read(&mut self, data: &mut [u8], delay: &mut dyn DelayUs<u32>) -> Result<(), T1Error> {
         for _i in 0..TWI_RETRIES {
-            trace!("Reading loop");
             let e = self.twi.read(self.se_address as u8, data);
             if e.is_ok() {
                 maybe_debug("T1 R", data);
@@ -109,7 +108,6 @@ where
             crc: 0,
         };
 
-        trace!("Got header: {header:?}");
         if header.nad != self.nad_se2hd {
             trace_now!("Received unexpected NAD");
             return Err(T1Error::ProtocolError);
@@ -132,7 +130,6 @@ where
             return Err(T1Error::ChecksumError);
         }
 
-        trace!("Frame OK");
         Ok(header)
     }
 

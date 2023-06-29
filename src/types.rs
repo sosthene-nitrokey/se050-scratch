@@ -451,6 +451,7 @@ pub type Se050CRC = crc16::State<crc16::X_25>;
 //////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// See AN13187 for reserved values
 pub struct ObjectId(pub [u8; 4]);
 
 impl ObjectId {

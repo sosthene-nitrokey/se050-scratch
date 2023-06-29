@@ -953,7 +953,7 @@ where
 
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
-            Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
+            Into::<u8>::into(Se050ApduInstruction::Mgmt),
             Se050ApduP1CredType::Default.into(),
             Se050ApduP2::SessionUserID.into(),
             None,
@@ -1135,7 +1135,7 @@ where
         delay: &mut dyn DelayUs<u32>,
     ) -> Result<(), Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), lockindicator);
-        let tlv2 = SimpleTlv::new(Se050TlvTag::Tag1.into(), lockstate);
+        let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), lockstate);
 
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
@@ -1730,7 +1730,7 @@ where
         let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), user_identifier_value);
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
-            Into::<u8>::into(Se050ApduInstruction::Write) | APDU_INSTRUCTION_TRANSIENT,
+            Into::<u8>::into(Se050ApduInstruction::Write),
             Se050ApduP1CredType::UserID.into(),
             Se050ApduP2::Default.into(),
             None,
@@ -2239,17 +2239,18 @@ where
     //###########################################################################
     // See AN12413// 4.7 Secure Object management  //4.7.4 ManageSecureObject // 4.7.4.3 ReadIDList P.69
     #[inline(never)]
-    pub fn read_id_list(
+    pub fn read_id_list<'buf>(
         &mut self,
         offset: &[u8; 2],
+        buf: &'buf mut [u8],
         delay: &mut dyn DelayUs<u32>,
-    ) -> Result<(), Se050Error> {
+    ) -> Result<&'buf [u8], Se050Error> {
         let tlv1 = SimpleTlv::new(Se050TlvTag::Tag1.into(), offset);
-        let tlv2 = SimpleTlv::new(Se050TlvTag::Tag1.into(), &[0xFF]);
+        let tlv2 = SimpleTlv::new(Se050TlvTag::Tag2.into(), &[0xFF]);
 
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
-            Into::<u8>::into(Se050ApduInstruction::Read) | APDU_INSTRUCTION_TRANSIENT,
+            Into::<u8>::into(Se050ApduInstruction::Read),
             Se050ApduP1CredType::Default.into(),
             Se050ApduP2::List.into(),
             Some(0x00),
@@ -2260,8 +2261,7 @@ where
 
         self.t1_proto.send_apdu(&capdu, delay)?;
 
-        let mut rapdu_buf: [u8; 260] = [0; 260];
-        let rapdu = self.t1_proto.receive_apdu(&mut rapdu_buf, delay)?;
+        let rapdu = self.t1_proto.receive_apdu(buf, delay)?;
 
         if rapdu.sw != 0x9000 {
             error!("SE050 read_id_list Failed: {:x}", rapdu.sw);
@@ -2270,7 +2270,7 @@ where
             ));
         }
 
-        Ok(())
+        Ok(rapdu.tlvs[1].data())
     }
 
     //###########################################################################
@@ -4974,7 +4974,7 @@ where
 
     #[inline(never)]
     #[allow(unused_mut)]
-    pub fn get_version(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<(), Se050Error> {
+    pub fn get_version(&mut self, delay: &mut dyn DelayUs<u32>) -> Result<[u8; 7], Se050Error> {
         let mut capdu = CApdu::new(
             ApduClass::ProprietaryPlain,
             Into::<u8>::into(Se050ApduInstruction::Mgmt) | APDU_INSTRUCTION_TRANSIENT,
@@ -4995,8 +4995,13 @@ where
             ));
         }
 
+        let res = rapdu.tlvs[0].data().try_into().map_err(|_| {
+            error!("Too large data: {rapdu:02x?}");
+            Se050Error::UnknownError
+        })?;
+
         trace_now!("SE050 get_version OK");
-        Ok(())
+        Ok(res)
     }
 
     //###########################################################################

@@ -103,3 +103,49 @@ Need restricted authentication object `RESERVED_ID_FACTORY_RESET`.
 Created with user id 0001020304
 
 Created object `01020304` with userid `01020304`
+
+> Note: To ensure the correct execution of the deleteAll command, an attested read
+> on a previously existing object must be performed after the execution of the deleteAll
+> command. The attested read response must indicate that the object has been correctly
+> deleted.
+
+Version:
+========
+
+GetVersion call returns: [3, 1, 1, 111, 255, 1, 11]
+
+ReadIdList
+==========
+
+### Unknown:
+
+- `0xf0000030`
+- `0xf0000123`
+- `0xf0000121`
+- `0xf0000113`
+- `0xf0000111`
+- `0xf0000103`
+- `0xf0000101`
+- `0xf0000122`
+- `0xf0000120`
+- `0xf0000112`
+- `0xf0000110`
+- `0xf0000102`
+- `0xf0000100`
+- `0xf0000003`
+- `0xf0000001`
+- `0xf0000002`
+- `0xf0000000`
+- `0xf0000011`
+- `0xf0000010`
+- `0xf0000013`
+- `0xf0000012`
+- `0xf0000020`
+
+### Reserved:
+
+- `0x7fff0209` -> `RFU`
+- `0x7fff0204` -> `RESERVED_ID_FEATURE`
+- `0x7fff0202` -> `RESERVED_ID_EXTERNAL_IMPORT`
+- `0x7fff0201` -> `RESERVED_ID_ECKEY_SESSION`
+- `0x7fff0206` -> `RESERVED_ID_UNIQUE_ID`
